@@ -71,6 +71,9 @@ tmp/
 temp/
 *.tmp
 
+# Git rewrite artifacts
+.git-rewrite/
+
 # Node (if needed for tooling)
 node_modules/
 .next/
