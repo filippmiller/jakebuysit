@@ -80,8 +80,16 @@ async def health_check():
 from services.vision.router import router as vision_router
 from services.marketplace.router import router as marketplace_router
 from services.pricing.router import router as pricing_router
+from services.integration.router import router as integration_router
 
-# Include routers
+# Include Agent 4 integration router (matches agent2-client.ts contract)
+app.include_router(
+    integration_router,
+    prefix=f"/api/{settings.api_version}",
+    tags=["integration"]
+)
+
+# Include detailed routers (for direct access if needed)
 app.include_router(
     vision_router,
     prefix=f"/api/{settings.api_version}/vision",
