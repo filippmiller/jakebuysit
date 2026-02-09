@@ -10,9 +10,9 @@ import { setupRedis } from './db/redis.js';
 import { setupQueues } from './queue/workers.js';
 import { authRoutes } from './api/routes/auth.js';
 import { offerRoutes } from './api/routes/offers.js';
-import { userRoutes } from './api/routes/users.js';
-import { shipmentRoutes } from './api/routes/shipments.js';
-import { webhookRoutes } from './api/routes/webhooks.js';
+import { usersRoutes } from './api/routes/users.js';
+import { shipmentsRoutes } from './api/routes/shipments.js';
+import { webhooksRoutes } from './api/routes/webhooks.js';
 import { adminRoutes } from './api/routes/admin.js';
 import { logger } from './utils/logger.js';
 
@@ -31,7 +31,7 @@ await fastify.register(cors, {
 await fastify.register(multipart, {
   limits: {
     fileSize: 10485760, // 10MB
-    files: 5, // max 5 photos per request
+    files: 6, // max 6 photos per request
   },
 });
 
@@ -62,9 +62,9 @@ fastify.get('/health', async () => {
 // Routes
 fastify.register(authRoutes, { prefix: '/api/v1/auth' });
 fastify.register(offerRoutes, { prefix: '/api/v1/offers' });
-fastify.register(userRoutes, { prefix: '/api/v1/users' });
-fastify.register(shipmentRoutes, { prefix: '/api/v1/shipments' });
-fastify.register(webhookRoutes, { prefix: '/webhooks' });
+fastify.register(usersRoutes, { prefix: '/api/v1/users' });
+fastify.register(shipmentsRoutes, { prefix: '/api/v1/shipments' });
+fastify.register(webhooksRoutes, { prefix: '/webhooks' });
 fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 
 // Error handler

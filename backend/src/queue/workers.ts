@@ -1,5 +1,5 @@
 import { Worker, Queue } from 'bullmq';
-import { getRedis } from '../db/redis.js';
+import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { processVisionJob } from './jobs/vision.js';
 import { processMarketplaceJob } from './jobs/marketplace.js';
@@ -19,12 +19,19 @@ const queueConfigs = {
 const queues: Record<string, Queue> = {};
 const workers: Worker[] = [];
 
-export async function setupQueues() {
-  const redis = getRedis();
-  const connection = {
-    host: redis.options?.socket?.host || 'localhost',
-    port: redis.options?.socket?.port || 6379,
+/**
+ * Parse Redis URL into host/port for BullMQ (which uses ioredis internally).
+ */
+function parseRedisUrl(url: string): { host: string; port: number } {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname || 'localhost',
+    port: parseInt(parsed.port || '6379', 10),
   };
+}
+
+export async function setupQueues() {
+  const connection = parseRedisUrl(config.redis.url);
 
   // Create queues
   for (const queueName of Object.keys(queueConfigs)) {
@@ -40,7 +47,7 @@ export async function setupQueues() {
     'notifications': processNotificationJob,
   };
 
-  for (const [queueName, config] of Object.entries(queueConfigs)) {
+  for (const [queueName, queueConfig] of Object.entries(queueConfigs)) {
     const worker = new Worker(
       queueName,
       async (job) => {
@@ -56,7 +63,7 @@ export async function setupQueues() {
       },
       {
         connection,
-        concurrency: config.concurrency,
+        concurrency: queueConfig.concurrency,
         removeOnComplete: { count: 1000 },
         removeOnFail: { count: 5000 },
       }
