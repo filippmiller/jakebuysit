@@ -36,6 +36,32 @@
 
 ---
 
+## [2026-02-09] - Submit Page & Navigation Dark Theme Redesign
+
+**Status**: Completed
+**Duration**: ~30 minutes
+**Commits**: c2ceded4
+
+### What was done
+- Redesigned Navigation.tsx with dark glass bar, amber gradient logo, glass pill active states
+- Redesigned submit/page.tsx with #0f0d0a background, ambient glows, glassmorphism form card, amber CTA
+- Redesigned CameraCapture.tsx with glass mode toggle, dark dropzones, amber dashed borders
+- Replaced all saloon/dusty custom color classes with hero design tokens
+- Build verified clean with zero errors
+
+### Decisions made
+- Matched exact design tokens from hero section for visual consistency
+- Used lighter backdrop-blur-sm on form cards (vs nav's backdrop-blur-md) for mobile performance
+- Amber gradient only on "Jake" word in headings — creates focal point without visual noise
+
+### Next steps
+- Dashboard, settings, and offer detail pages still use light theme
+- Consider extracting design tokens to shared constants if more pages get converted
+
+**Session notes**: `.claude/sessions/2026-02-09-210000-submit-dark-theme.md`
+
+---
+
 ## [2026-02-09] - Hero Section Redesign
 
 **Status**: Completed

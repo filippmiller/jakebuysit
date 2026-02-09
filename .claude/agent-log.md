@@ -131,6 +131,32 @@ Built complete Backend API & Infrastructure (Agent 4) for JakeBuysIt. Created Fa
 
 ---
 
+## [2026-02-09 21:00] — Submit Page & Navigation Dark Theme Redesign
+
+**Area:** UI / Frontend
+**Type:** feature
+
+### Files Changed
+- `web/components/Navigation.tsx` — Dark glass nav bar with amber gradient logo, glass pill active links
+- `web/app/submit/page.tsx` — Dark theme submit page with ambient glows, glassmorphism form card, amber CTA
+- `web/components/CameraCapture.tsx` — Glass mode toggle, dark dropzones with amber dashed borders, glass photo previews
+
+### Functions/Symbols Modified
+- `Navigation()` — Replaced white theme with dark glass: bg-[#0a0908]/90, backdrop-blur-md, amber gradient logo, glass pill active states
+- `SubmitPage()` — Replaced saloon-50/white gradient with bg-[#0f0d0a], added ambient glow circles, glassmorphism form card, dark inputs with amber focus, amber gradient CTA
+- `CameraCapture()` — Replaced gray/saloon toggle with glass buttons, dark guidance box with amber border, dark dropzones, glass photo previews with backdrop-blur overlays
+
+### Database Tables
+N/A
+
+### Summary
+Redesigned the submit page flow and navigation bar to match the hero section's dark premium aesthetic. Replaced all light-theme classes (saloon-*, dusty-*, bg-white, bg-gray-*) with the hero's design tokens: #0f0d0a backgrounds, white/[0.07] glassmorphism, amber-400/500 accents, warm text palette (#f5f0e8, #a89d8a, #c3bbad, #706557). Added ambient glow effects to submit page. Build compiles cleanly.
+
+### Session Notes
+→ `.claude/sessions/2026-02-09-210000-submit-dark-theme.md`
+
+---
+
 ## [2026-02-09 17:25] — Redesign Hero Section with Jack Photo, Speech Bubbles & Glass Cards
 
 **Area:** UI/Hero / Frontend
