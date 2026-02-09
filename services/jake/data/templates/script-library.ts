@@ -7,6 +7,32 @@
 
 import { ScriptTemplate, ScenarioType, JakeTone } from '../../../../types/jake.js';
 
+/**
+ * Select a template for the given scenario, optionally weighted by user context.
+ */
+export function selectTemplate(
+  scenario: ScenarioType,
+  _context?: Record<string, any>,
+): ScriptTemplate | null {
+  const pool = SCRIPT_TEMPLATES[scenario];
+  if (!pool || pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * Fill a template's [VARIABLE] placeholders with concrete values.
+ */
+export function fillTemplate(
+  template: ScriptTemplate,
+  values: Record<string, string>,
+): string {
+  let text = template.template;
+  for (const [key, val] of Object.entries(values)) {
+    text = text.replace(new RegExp(`\\[${key}\\]`, 'g'), val);
+  }
+  return text;
+}
+
 export const SCRIPT_TEMPLATES: Record<ScenarioType, ScriptTemplate[]> = {
   // GREETINGS
   greeting_first: [

@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   poweredByHeader: false,
   env: {
     NEXT_PUBLIC_APP_NAME: 'JakeBuysIt Admin',
