@@ -6,8 +6,7 @@
  */
 
 import axios from 'axios';
-import AWS from 'aws-sdk';
-const { S3 } = AWS;
+import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import type {
   VoiceSynthesisRequest,
@@ -18,7 +17,7 @@ import type {
 export class TTSService {
   private elevenLabsApiKey: string;
   private jakeVoiceId: string;
-  private s3: S3;
+  private s3: S3Client;
   private bucket: string;
   private cdnBaseUrl: string;
 
@@ -28,10 +27,14 @@ export class TTSService {
     this.bucket = process.env.S3_VOICE_BUCKET || 'jake-voices';
     this.cdnBaseUrl = process.env.CDN_BASE_URL || '';
 
-    this.s3 = new S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    this.s3 = new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
+      ...(process.env.AWS_ACCESS_KEY_ID && {
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        },
+      }),
     });
   }
 
@@ -131,13 +134,13 @@ export class TTSService {
   private async uploadToS3(key: string, buffer: Buffer): Promise<string> {
     const s3Key = `tier2/${key}.mp3`;
 
-    await this.s3.putObject({
+    await this.s3.send(new PutObjectCommand({
       Bucket: this.bucket,
       Key: s3Key,
       Body: buffer,
       ContentType: 'audio/mpeg',
       CacheControl: 'public, max-age=604800', // 7 days
-    }).promise();
+    }));
 
     return `${this.cdnBaseUrl}/${s3Key}`;
   }
@@ -149,10 +152,10 @@ export class TTSService {
     const s3Key = `tier2/${key}.mp3`;
 
     try {
-      await this.s3.headObject({
+      await this.s3.send(new HeadObjectCommand({
         Bucket: this.bucket,
         Key: s3Key,
-      }).promise();
+      }));
 
       // If exists, return URL
       return {
