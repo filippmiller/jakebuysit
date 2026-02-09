@@ -16,7 +16,7 @@ class Database {
     });
 
     this.pool.on('error', (err) => {
-      logger.error('Unexpected database error', err);
+      logger.error({ err }, 'Unexpected database error');
     });
   }
 
@@ -26,7 +26,7 @@ class Database {
       logger.info('Database connection verified');
       client.release();
     } catch (error) {
-      logger.error('Failed to connect to database', error);
+      logger.error({ err: error }, 'Failed to connect to database');
       throw error;
     }
   }

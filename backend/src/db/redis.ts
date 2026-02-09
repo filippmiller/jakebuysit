@@ -12,7 +12,7 @@ export async function setupRedis(): Promise<RedisClient> {
   });
 
   redisClient.on('error', (err) => {
-    logger.error('Redis error', err);
+    logger.error({ err }, 'Redis error');
   });
 
   redisClient.on('connect', () => {
