@@ -68,7 +68,7 @@ fastify.register(webhooksRoutes, { prefix: '/webhooks' });
 fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 
 // Error handler
-fastify.setErrorHandler((error, request, reply) => {
+fastify.setErrorHandler((error: any, request, reply) => {
   logger.error({
     err: error,
     req: request,

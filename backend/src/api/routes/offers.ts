@@ -235,7 +235,7 @@ export async function offerRoutes(fastify: FastifyInstance) {
    * GET /api/v1/offers
    * List current user's offers (requires auth).
    */
-  fastify.get('/', { preHandler: requireAuth }, async (request, reply) => {
+  fastify.get('/', { preHandler: requireAuth }, async (request, _reply) => {
     const userId = (request as any).userId;
     const { status, limit, offset } = request.query as {
       status?: string;

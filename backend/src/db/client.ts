@@ -36,7 +36,7 @@ class Database {
     logger.info('Database pool closed');
   }
 
-  async query<T = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
+  async query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
     const start = Date.now();
     try {
       const result = await this.pool.query(text, params);

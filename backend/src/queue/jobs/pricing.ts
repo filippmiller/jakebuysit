@@ -9,7 +9,15 @@ import { logger } from '../../utils/logger.js';
 
 interface PricingJobData {
   offerId: string;
-  marketplaceStats: { count: number; median: number; mean: number; std_dev: number };
+  marketplaceStats: {
+    count: number;
+    median: number;
+    mean: number;
+    std_dev: number;
+    percentiles: { p25: number; p50: number; p75: number };
+    min_price?: number;
+    max_price?: number;
+  };
   category: string;
   condition: string;
 }
