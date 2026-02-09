@@ -79,23 +79,23 @@ export default function Home() {
           </h3>
 
           <div className="overflow-hidden">
-            <motion.div
-              animate={{ x: [0, -1000] }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="flex gap-6"
-            >
-              {recentOffers.map((offer, index) => (
-                <div
-                  key={index}
-                  className="flex-shrink-0 px-6 py-4 bg-white rounded-lg shadow-md"
-                >
-                  <p className="text-sm text-dusty-600">{offer.item}</p>
-                  <p className="text-2xl font-bold text-saloon-600">
-                    {offer.price}
-                  </p>
+            <div className="flex animate-ticker">
+              {[0, 1].map((setIdx) => (
+                <div key={setIdx} className="flex gap-6 shrink-0 pr-6">
+                  {recentOffers.map((offer, index) => (
+                    <div
+                      key={`${setIdx}-${index}`}
+                      className="flex-shrink-0 px-6 py-4 bg-white rounded-lg shadow-md"
+                    >
+                      <p className="text-sm text-dusty-600">{offer.item}</p>
+                      <p className="text-2xl font-bold text-saloon-600">
+                        {offer.price}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>

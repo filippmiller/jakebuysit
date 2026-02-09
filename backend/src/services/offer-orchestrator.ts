@@ -144,6 +144,10 @@ export const offerOrchestrator = {
 
     // Fetch the offer to get category + condition for pricing
     const offer = await db.findOne('offers', { id: offerId });
+    if (!offer) {
+      await this.fail(offerId, `Offer ${offerId} not found when chaining to pricing`);
+      return;
+    }
 
     await addJob('pricing-calculate', {
       offerId,
@@ -200,6 +204,10 @@ export const offerOrchestrator = {
 
     // Fetch offer for jake context
     const offer = await db.findOne('offers', { id: offerId });
+    if (!offer) {
+      await this.fail(offerId, `Offer ${offerId} not found when chaining to jake-voice`);
+      return;
+    }
 
     // Determine jake scenario based on offer ratio
     let scenario: string;
@@ -257,11 +265,23 @@ export const offerOrchestrator = {
    * Escalate an offer for human review.
    */
   async escalate(offerId: string, reason: string, notes: string): Promise<void> {
+    // Read existing notes to append (not overwrite)
+    const existing = await db.findOne('offers', { id: offerId });
+    let existingNotes: Array<{ note: string; at: string }> = [];
+    if (existing?.escalation_notes) {
+      try {
+        existingNotes = JSON.parse(existing.escalation_notes);
+      } catch {
+        existingNotes = [];
+      }
+    }
+    existingNotes.push({ note: notes, at: new Date().toISOString() });
+
     await db.update('offers', { id: offerId }, {
       status: 'processing', // keep processing — human will finalize
       escalated: true,
       escalation_reason: reason,
-      escalation_notes: JSON.stringify([{ note: notes, at: new Date().toISOString() }]),
+      escalation_notes: JSON.stringify(existingNotes),
     });
 
     await this.setStage(offerId, 'escalated');
@@ -281,11 +301,23 @@ export const offerOrchestrator = {
    * Mark an offer as failed.
    */
   async fail(offerId: string, error: string): Promise<void> {
+    // Read existing notes to append (not overwrite)
+    const existing = await db.findOne('offers', { id: offerId });
+    let existingNotes: Array<{ note: string; at: string }> = [];
+    if (existing?.escalation_notes) {
+      try {
+        existingNotes = JSON.parse(existing.escalation_notes);
+      } catch {
+        existingNotes = [];
+      }
+    }
+    existingNotes.push({ note: error, at: new Date().toISOString() });
+
     await db.update('offers', { id: offerId }, {
       status: 'processing',
       escalated: true,
       escalation_reason: 'pipeline_error',
-      escalation_notes: JSON.stringify([{ note: error, at: new Date().toISOString() }]),
+      escalation_notes: JSON.stringify(existingNotes),
     });
 
     await this.setStage(offerId, 'failed');

@@ -39,31 +39,37 @@ export default function OfferPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-saloon-50 to-white">
-      {error && (
-        <div className="max-w-2xl mx-auto p-4">
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-            <p className="text-red-700">{error}</p>
+    <main className="min-h-screen bg-[#0f0d0a] relative overflow-hidden">
+      {/* Ambient Glows */}
+      <div className="absolute top-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-amber-900/[0.06] blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] rounded-full bg-amber-800/[0.04] blur-[100px] pointer-events-none" />
+
+      <div className="relative z-10">
+        {error && (
+          <div className="max-w-2xl mx-auto p-4 pt-8">
+            <div className="bg-red-500/10 border border-red-500/30 border-l-4 border-l-red-500 p-4 rounded-lg backdrop-blur-sm">
+              <p className="text-red-300">{error}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {stage === "researching" && (
-        <ResearchAnimation
-          offerId={offerId}
-          onComplete={handleResearchComplete}
-        />
-      )}
-
-      {stage === "offer" && offer && (
-        <div className="py-12 px-4">
-          <OfferCard
-            offer={offer}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
+        {stage === "researching" && (
+          <ResearchAnimation
+            offerId={offerId}
+            onComplete={handleResearchComplete}
           />
-        </div>
-      )}
+        )}
+
+        {stage === "offer" && offer && (
+          <div className="py-12 px-4">
+            <OfferCard
+              offer={offer}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+            />
+          </div>
+        )}
+      </div>
     </main>
   );
 }

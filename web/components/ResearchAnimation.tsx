@@ -98,8 +98,8 @@ export function ResearchAnimation({
               exit={{ opacity: 0, y: -20 }}
               className="text-center"
             >
-              <h2 className="text-3xl font-bold text-dusty-800 mb-4">
-                Alright, let's see what we got here...
+              <h2 className="text-3xl font-bold text-[#f5f0e8] mb-4">
+                Alright, let&apos;s see what we got here...
               </h2>
 
               {/* Animated labels appear */}
@@ -110,7 +110,7 @@ export function ResearchAnimation({
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: index * 0.2 }}
-                    className="px-4 py-2 bg-saloon-100 border-2 border-saloon-400 rounded-full text-saloon-700 font-medium"
+                    className="px-4 py-2 bg-amber-500/[0.15] border border-amber-400/30 rounded-full text-amber-300 font-medium"
                   >
                     {label}
                   </motion.div>
@@ -121,7 +121,7 @@ export function ResearchAnimation({
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="w-8 h-8 border-4 border-saloon-500 border-t-transparent rounded-full"
+                  className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full"
                 />
               </div>
             </motion.div>
@@ -137,8 +137,8 @@ export function ResearchAnimation({
               exit={{ opacity: 0, y: -20 }}
               className="text-center"
             >
-              <h2 className="text-3xl font-bold text-dusty-800 mb-6">
-                Checkin' what these are goin' for...
+              <h2 className="text-3xl font-bold text-[#f5f0e8] mb-6">
+                Checkin&apos; what these are goin&apos; for...
               </h2>
 
               {/* Network Visualization */}
@@ -170,6 +170,7 @@ export function ResearchAnimation({
                           y2={`${cy}%`}
                           stroke="#d67d28"
                           strokeWidth="2"
+                          strokeOpacity="0.5"
                           initial={{ pathLength: 0 }}
                           animate={{ pathLength: 1 }}
                           transition={{ delay: i * 0.1 }}
@@ -179,7 +180,8 @@ export function ResearchAnimation({
                           cx={`${cx}%`}
                           cy={`${cy}%`}
                           r="15"
-                          fill="#f0bc7d"
+                          fill="#b66420"
+                          fillOpacity="0.6"
                           initial={{ scale: 0 }}
                           animate={{ scale: [0, 1.2, 1] }}
                           transition={{ delay: i * 0.1 }}
@@ -194,7 +196,7 @@ export function ResearchAnimation({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="inline-block px-8 py-4 bg-saloon-500 text-white rounded-full text-2xl font-bold"
+                className="inline-block px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 text-[#1a1510] rounded-full text-2xl font-bold"
               >
                 <motion.span
                   key={salesCount}
@@ -206,8 +208,8 @@ export function ResearchAnimation({
                 recent sales found
               </motion.div>
 
-              <p className="mt-4 text-dusty-600 italic">
-                "eBay's movin' these fast..."
+              <p className="mt-4 text-[#a89d8a] italic">
+                &quot;eBay&apos;s movin&apos; these fast...&quot;
               </p>
             </motion.div>
           )}
@@ -222,8 +224,8 @@ export function ResearchAnimation({
               exit={{ opacity: 0, y: -20 }}
               className="text-center"
             >
-              <h2 className="text-3xl font-bold text-dusty-800 mb-6">
-                Now, here's what I can do for ya...
+              <h2 className="text-3xl font-bold text-[#f5f0e8] mb-6">
+                Now, here&apos;s what I can do for ya...
               </h2>
 
               {/* Price Histogram */}
@@ -239,13 +241,13 @@ export function ResearchAnimation({
                         initial={{ height: 0 }}
                         animate={{ height: `${height}%` }}
                         transition={{ delay: index * 0.05 }}
-                        className="flex-1 bg-saloon-400 rounded-t"
+                        className="flex-1 bg-gradient-to-t from-amber-600 to-amber-400 rounded-t"
                         style={{ minWidth: "8px" }}
                       />
                     );
                   })}
                 </div>
-                <div className="flex justify-between text-sm text-dusty-600 mt-2">
+                <div className="flex justify-between text-sm text-[#a89d8a] mt-2">
                   <span>${Math.min(...pricePoints)}</span>
                   <span>${Math.max(...pricePoints)}</span>
                 </div>
@@ -256,10 +258,10 @@ export function ResearchAnimation({
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 200 }}
-                className="inline-block px-12 py-6 bg-gradient-to-r from-saloon-500 to-saloon-600 text-white rounded-2xl shadow-2xl"
+                className="inline-block px-12 py-6 bg-white/[0.07] backdrop-blur-sm border border-white/[0.12] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
               >
-                <p className="text-sm opacity-80 mb-1">Jake's Offer</p>
-                <p className="text-5xl font-bold">Calculating...</p>
+                <p className="text-sm text-[#a89d8a] mb-1">Jake&apos;s Offer</p>
+                <p className="text-5xl font-bold bg-gradient-to-r from-amber-400 to-amber-300 bg-clip-text text-transparent">Calculating...</p>
               </motion.div>
             </motion.div>
           )}

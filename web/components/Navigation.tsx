@@ -23,8 +23,8 @@ export function Navigation() {
     { href: "/submit", label: "Sell", icon: Camera },
   ];
 
-  // Don't show nav on landing page for cleaner hero
-  if (pathname === "/") {
+  // Don't show nav on landing page or admin routes
+  if (pathname === "/" || pathname.startsWith("/admin")) {
     return null;
   }
 

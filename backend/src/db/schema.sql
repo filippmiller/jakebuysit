@@ -17,6 +17,9 @@ CREATE TABLE users (
   verified BOOLEAN DEFAULT false,
   trust_score FLOAT DEFAULT 50, -- 0-100
   risk_flags JSONB DEFAULT '[]',
+  role TEXT DEFAULT 'user', -- 'user', 'admin', 'super_admin', 'reviewer', 'warehouse'
+  banned BOOLEAN DEFAULT false,
+  ban_reason TEXT,
   payout_preferred TEXT, -- 'paypal', 'venmo', 'zelle', 'bank', 'jake_bucks'
   payout_details_encrypted TEXT, -- tokenized
   jake_bucks_balance DECIMAL(10,2) DEFAULT 0,

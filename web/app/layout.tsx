@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, Outfit } from "next/font/google";
 import { Navigation } from "@/components/Navigation";
+import { MainWrapper } from "@/components/MainWrapper";
 import "./globals.css";
 
 const syne = Syne({ subsets: ["latin"], variable: '--font-display' });
@@ -37,9 +38,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${syne.variable} ${outfit.variable} font-sans antialiased`}>
         <Navigation />
-        <div className="pt-16">
+        <MainWrapper>
           {children}
-        </div>
+        </MainWrapper>
       </body>
     </html>
   );

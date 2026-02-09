@@ -66,11 +66,11 @@ class MarketplaceAggregator:
         # Filter outliers
         filtered_listings = self._filter_outliers(all_listings)
 
-        # Apply recency weighting
-        weighted_listings = self._apply_recency_weighting(filtered_listings)
+        # Compute recency weights (without corrupting actual prices)
+        recency_weights = self._compute_recency_weights(filtered_listings)
 
-        # Compute statistics
-        stats = self._compute_statistics(weighted_listings)
+        # Compute statistics with recency-weighted mean
+        stats = self._compute_statistics(filtered_listings, weights=recency_weights)
 
         logger.info(
             "product_research_completed",
@@ -125,57 +125,40 @@ class MarketplaceAggregator:
 
         return filtered
 
-    def _apply_recency_weighting(
+    def _compute_recency_weights(
         self,
         listings: List[MarketplaceListing]
-    ) -> List[MarketplaceListing]:
+    ) -> List[float]:
         """
-        Apply recency weighting to listings.
+        Compute recency weights for listings without modifying prices.
 
-        Adjusts listing prices to reflect recency — newer sales
-        count more toward FMV than older ones.
-
-        Sales <30 days: weight 1.0 (full price)
-        30-60 days: weight 0.8 (20% discount)
-        60-90 days: weight 0.5 (50% discount)
+        Sales <30 days: weight 1.0
+        30-60 days: weight 0.8
+        60-90 days: weight 0.5
         """
         from datetime import datetime
 
         now = datetime.now(tz=None)
+        weights = []
 
-        weighted = []
         for listing in listings:
             if not listing.sold_date:
-                weighted.append(listing)
+                weights.append(1.0)
                 continue
 
             days_ago = (now - listing.sold_date).days
 
             if days_ago < 30:
-                weight = 1.0
+                weights.append(1.0)
             elif days_ago < 60:
-                weight = 0.8
+                weights.append(0.8)
             else:
-                weight = 0.5
+                weights.append(0.5)
 
-            # Apply weight by adjusting effective price
-            # This causes older listings to pull the median/mean down
-            # proportionally to their age, giving recent data more influence.
-            weighted_listing = MarketplaceListing(
-                title=listing.title,
-                price=listing.price * weight,
-                shipping_cost=listing.shipping_cost,
-                condition=listing.condition,
-                sold_date=listing.sold_date,
-                source=listing.source,
-                url=listing.url,
-            )
-            weighted.append(weighted_listing)
+        return weights
 
-        return weighted
-
-    def _compute_statistics(self, listings: List[MarketplaceListing]) -> MarketplaceStats:
-        """Compute statistical metrics for listings."""
+    def _compute_statistics(self, listings: List[MarketplaceListing], weights: List[float] = None) -> MarketplaceStats:
+        """Compute statistical metrics for listings, using recency weights for the mean."""
         if not listings:
             return MarketplaceStats(
                 count=0,
@@ -187,11 +170,18 @@ class MarketplaceAggregator:
 
         prices = np.array([l.price for l in listings])
 
-        # Calculate statistics
+        # Use recency weights for mean calculation (gives recent sales more influence)
+        # Median and percentiles use unweighted prices to stay robust against outliers
+        if weights is not None:
+            w = np.array(weights)
+            weighted_mean = float(np.average(prices, weights=w))
+        else:
+            weighted_mean = float(np.mean(prices))
+
         stats = MarketplaceStats(
             count=len(prices),
             median=float(np.median(prices)),
-            mean=float(np.mean(prices)),
+            mean=weighted_mean,
             std_dev=float(np.std(prices)),
             percentiles={
                 "p25": float(np.percentile(prices, 25)),
