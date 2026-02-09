@@ -1,5 +1,44 @@
 # Work Log - JakeBuysIt
 
+## [2026-02-09] - Wizzard Analysis & Top 5 Improvements
+
+**Status**: Completed
+**Duration**: ~45 minutes
+**Commits**: f1ab8f77
+
+### What was done
+- Ran full codebase analysis across all 5 agents (Frontend, Backend, AI/Vision, Jake Voice, Admin)
+- Generated 30 improvement ideas, critically evaluated each, selected top 5
+- Implemented all 5 improvements in parallel using 4 specialist agents
+
+### Improvements implemented
+1. **WebSocket offer streaming** — Backend route at `/api/v1/offers/:id/stream` for real-time pipeline progress (was completely missing, core UX was broken)
+2. **HTTP polling fallback** — useWebSocket hook auto-falls back to 3s HTTP polling when WebSocket fails
+3. **Login & registration UI** — Zustand auth store, /login, /register pages, nav auth state
+4. **Upload progress bars** — XHR-based upload with percentage progress and three-phase indicator
+5. **Inline form validation** — Photo count hints, character counter, file size warnings, disabled submit
+
+### Files changed (9 files, +1327 lines)
+- `backend/src/api/routes/offer-stream.ts` (created, 290 lines)
+- `backend/src/index.ts` (modified, +2 lines)
+- `web/lib/auth-store.ts` (created, 174 lines)
+- `web/app/login/page.tsx` (created, 178 lines)
+- `web/app/register/page.tsx` (created, 271 lines)
+- `web/hooks/useWebSocket.ts` (rewritten, 226 lines)
+- `web/components/Navigation.tsx` (rewritten, 114 lines)
+- `web/components/ResearchAnimation.tsx` (modified, +4 lines)
+- `web/app/submit/page.tsx` (rewritten, 335 lines)
+
+### Decisions made
+- Redis polling (not pub/sub) for WebSocket — simpler, no new dependency
+- XHR for upload progress — fetch() has no upload progress API
+- Zustand for auth — already in deps, lightweight, SSR-safe
+- 3s polling interval — balance between responsiveness and server load
+
+**Session notes**: `.claude/sessions/2026-02-09-wizzard-improvements.md`
+
+---
+
 ## [2026-02-09] - Full Platform Deployment to Hetzner VPS
 
 **Status**: Completed
