@@ -1,1 +1,1 @@
-export function user-table() { return <div>user-table - To be implemented</div>; }
+export function UserTable() { return <div>user-table - To be implemented</div>; }

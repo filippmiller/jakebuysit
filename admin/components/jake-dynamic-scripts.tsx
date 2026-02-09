@@ -1,1 +1,1 @@
-export function jake-dynamic-scripts() { return <div>jake-dynamic-scripts - To be implemented</div>; }
+export function JakeDynamicScripts() { return <div>jake-dynamic-scripts - To be implemented</div>; }

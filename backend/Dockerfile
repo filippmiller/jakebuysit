@@ -5,8 +5,12 @@ WORKDIR /app
 
 ENV NODE_ENV=development
 
+RUN apk add --no-cache python3 make g++
+
 COPY package.json package-lock.json* ./
 RUN npm install
+
+ENV NODE_ENV=production
 
 COPY tsconfig.json ./
 COPY src/ ./src/

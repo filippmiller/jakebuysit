@@ -1,1 +1,1 @@
-export function jake-engagement-analytics() { return <div>jake-engagement-analytics - To be implemented</div>; }
+export function JakeEngagementAnalytics() { return <div>jake-engagement-analytics - To be implemented</div>; }

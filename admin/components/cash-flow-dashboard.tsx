@@ -1,1 +1,1 @@
-export function cash-flow-dashboard() { return <div>cash-flow-dashboard - To be implemented</div>; }
+export function CashFlowDashboard() { return <div>cash-flow-dashboard - To be implemented</div>; }

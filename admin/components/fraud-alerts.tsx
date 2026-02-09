@@ -1,1 +1,1 @@
-export function fraud-alerts() { return <div>fraud-alerts - To be implemented</div>; }
+export function FraudAlerts() { return <div>fraud-alerts - To be implemented</div>; }

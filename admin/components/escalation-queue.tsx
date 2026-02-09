@@ -1,1 +1,1 @@
-export function escalation-queue() { return <div>escalation-queue - To be implemented</div>; }
+export function EscalationQueue() { return <div>escalation-queue - To be implemented</div>; }

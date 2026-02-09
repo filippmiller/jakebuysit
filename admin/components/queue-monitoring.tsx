@@ -1,1 +1,1 @@
-export function queue-monitoring() { return <div>queue-monitoring - To be implemented</div>; }
+export function QueueMonitoring() { return <div>queue-monitoring - To be implemented</div>; }

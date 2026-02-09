@@ -1,1 +1,1 @@
-export function jake-templates-manager() { return <div>jake-templates-manager - To be implemented</div>; }
+export function JakeTemplatesManager() { return <div>jake-templates-manager - To be implemented</div>; }

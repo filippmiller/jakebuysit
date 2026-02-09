@@ -1,1 +1,1 @@
-export function api-metrics() { return <div>api-metrics - To be implemented</div>; }
+export function ApiMetrics() { return <div>api-metrics - To be implemented</div>; }

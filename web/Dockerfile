@@ -8,6 +8,8 @@ ENV NODE_ENV=development
 COPY package.json package-lock.json* ./
 RUN npm install
 
+ENV NODE_ENV=production
+
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1

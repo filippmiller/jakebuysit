@@ -1,1 +1,1 @@
-export function escalation-analysis() { return <div>escalation-analysis - To be implemented</div>; }
+export function EscalationAnalysis() { return <div>escalation-analysis - To be implemented</div>; }

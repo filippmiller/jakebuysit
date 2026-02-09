@@ -1,1 +1,1 @@
-export function profitability-by-category() { return <div>profitability-by-category - To be implemented</div>; }
+export function ProfitabilityByCategory() { return <div>profitability-by-category - To be implemented</div>; }

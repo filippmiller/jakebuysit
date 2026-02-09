@@ -1,1 +1,1 @@
-export function user-risk-dashboard() { return <div>user-risk-dashboard - To be implemented</div>; }
+export function UserRiskDashboard() { return <div>user-risk-dashboard - To be implemented</div>; }

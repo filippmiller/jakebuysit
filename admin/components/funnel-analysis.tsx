@@ -1,1 +1,1 @@
-export function funnel-analysis() { return <div>funnel-analysis - To be implemented</div>; }
+export function FunnelAnalysis() { return <div>funnel-analysis - To be implemented</div>; }

@@ -1,1 +1,1 @@
-export function jake-clips-manager() { return <div>jake-clips-manager - To be implemented</div>; }
+export function JakeClipsManager() { return <div>jake-clips-manager - To be implemented</div>; }

@@ -1,1 +1,1 @@
-export function user-detail() { return <div>user-detail - To be implemented</div>; }
+export function UserDetail() { return <div>user-detail - To be implemented</div>; }

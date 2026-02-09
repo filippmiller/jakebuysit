@@ -68,7 +68,7 @@ export class CharacterConsistencyChecker {
     const matches: string[] = [];
     
     for (const banned of JAKE_CHARACTER.banned) {
-      const regex = new RegExp(banned.replace(/[.*+?^${}()|[\]\]/g, '\$&'), 'i');
+      const regex = new RegExp(banned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       if (regex.test(script)) {
         matches.push(banned);
       }

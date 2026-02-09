@@ -1,1 +1,1 @@
-export function verification-interface() { return <div>verification-interface - To be implemented</div>; }
+export function VerificationInterface() { return <div>verification-interface - To be implemented</div>; }

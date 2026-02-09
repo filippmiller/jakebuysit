@@ -1,1 +1,1 @@
-export function config-editor() { return <div>config-editor - To be implemented</div>; }
+export function ConfigEditor() { return <div>config-editor - To be implemented</div>; }

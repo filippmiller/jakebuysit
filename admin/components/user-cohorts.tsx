@@ -1,1 +1,1 @@
-export function user-cohorts() { return <div>user-cohorts - To be implemented</div>; }
+export function UserCohorts() { return <div>user-cohorts - To be implemented</div>; }
