@@ -188,3 +188,31 @@ Redesigned the hero section for JakeBuysIt's landing page. Replaced SVG illustra
 → `.claude/sessions/2026-02-09-172500-hero-redesign.md`
 
 ---
+
+## [2026-02-09 23:45] — Create Architecture & Project Overview Documents
+
+**Area:** Documentation
+**Type:** docs
+
+### Files Changed
+- `ARCHITECTURE.md` — Created: full technical architecture reference (system diagram, offer pipeline, DB schema, API surface, infrastructure, integration points, key files, config, security)
+- `PROJECT.md` — Created: product & business context (what JakeBuysIt is, user flow, Jake character bible, business rules, pricing formula, current status, agent responsibilities)
+
+### Functions/Symbols Modified
+N/A (documentation only)
+
+### Database Tables
+N/A
+
+### Summary
+Created two root-level documents as the single entry point for any agent joining the project. `ARCHITECTURE.md` covers the 5-service system architecture, offer pipeline with BullMQ job chain, all 11 database tables, full API surface (with implementation status), Docker Compose infrastructure, Redis usage patterns, integration clients, key file reference table, all environment variables, and security model. `PROJECT.md` covers the product concept, 9-step user flow, Jake's character (personality, tone guidelines, speech patterns, banned patterns, 3-tier voice system), business rules with exact numbers (category margins, condition multipliers, limits), current build status (what's done vs stubbed), and agent responsibilities. All 21 file paths referenced were verified to exist.
+
+### Handoff: Next Agent Must Pick Up Beads Work
+There are **10 unblocked Beads issues** ready for implementation. Run `bd ready` to see them. Priorities:
+- **P1**: pawn-wps (Tailwind/Radix styling), pawn-l5q (landing page), pawn-6ho (camera/upload), pawn-3jx (Jake/Rive), pawn-be0 (offer card), pawn-a5i (Telegram bot), pawn-egk (admin API client)
+- **P2**: pawn-pe2 (post-accept registration), pawn-r61 (batch/garage sale mode), pawn-8gl (config panel)
+
+### Session Notes
+→ `.claude/sessions/2026-02-09-234500-architecture-project-docs.md`
+
+---
