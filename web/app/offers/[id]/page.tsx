@@ -28,8 +28,9 @@ export default function OfferPage() {
   };
 
   const handleAccept = () => {
-    // Navigate to registration flow
-    router.push(`/offers/${offerId}/register`);
+    // For now, redirect to dashboard
+    // TODO: Build registration flow modal
+    router.push("/dashboard");
   };
 
   const handleDecline = () => {
