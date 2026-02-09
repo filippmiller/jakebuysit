@@ -36,14 +36,12 @@
     "zod": "^3.22.4",
     "axios": "^1.6.0",
     "eventsource": "^2.0.2",
-    "node-telegram-bot-api": "^0.66.0",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/node-telegram-bot-api": "^0.64.0",
     "tailwindcss": "^3.4.1",
     "postcss": "^8.4.35",
     "autoprefixer": "^10.4.17",
