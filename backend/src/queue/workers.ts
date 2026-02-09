@@ -22,11 +22,12 @@ const workers: Worker[] = [];
 /**
  * Parse Redis URL into host/port for BullMQ (which uses ioredis internally).
  */
-function parseRedisUrl(url: string): { host: string; port: number } {
+function parseRedisUrl(url: string): { host: string; port: number; password?: string } {
   const parsed = new URL(url);
   return {
     host: parsed.hostname || 'localhost',
     port: parseInt(parsed.port || '6379', 10),
+    ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
   };
 }
 

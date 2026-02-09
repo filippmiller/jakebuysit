@@ -6,7 +6,8 @@
  */
 
 import axios from 'axios';
-import { S3 } from 'aws-sdk';
+import AWS from 'aws-sdk';
+const { S3 } = AWS;
 import crypto from 'crypto';
 import type {
   VoiceSynthesisRequest,

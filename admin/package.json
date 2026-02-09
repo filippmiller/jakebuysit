@@ -36,7 +36,8 @@
     "zod": "^3.22.4",
     "axios": "^1.6.0",
     "eventsource": "^2.0.2",
-    "node-telegram-bot-api": "^0.66.0"
+    "node-telegram-bot-api": "^0.66.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20",
