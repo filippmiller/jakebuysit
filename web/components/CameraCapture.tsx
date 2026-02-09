@@ -85,10 +85,10 @@ export function CameraCapture({
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setMode("camera")}
-          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all border ${
             mode === "camera"
-              ? "bg-saloon-500 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-white/[0.12] border-white/[0.2] text-amber-400"
+              : "bg-white/[0.04] border-white/[0.08] text-[#a89d8a] hover:bg-white/[0.07] hover:text-[#f5f0e8]"
           }`}
         >
           <Camera className="w-5 h-5 inline mr-2" />
@@ -96,10 +96,10 @@ export function CameraCapture({
         </button>
         <button
           onClick={() => setMode("upload")}
-          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all border ${
             mode === "upload"
-              ? "bg-saloon-500 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-white/[0.12] border-white/[0.2] text-amber-400"
+              : "bg-white/[0.04] border-white/[0.08] text-[#a89d8a] hover:bg-white/[0.07] hover:text-[#f5f0e8]"
           }`}
         >
           <Upload className="w-5 h-5 inline mr-2" />
@@ -108,21 +108,21 @@ export function CameraCapture({
       </div>
 
       {/* Jake's Guidance */}
-      <div className="bg-saloon-50 border-l-4 border-saloon-500 p-4 mb-4 rounded">
-        <p className="text-dusty-700">
+      <div className="bg-white/[0.05] border-l-4 border-amber-500 p-4 mb-4 rounded-lg backdrop-blur-sm">
+        <p className="text-[#c3bbad]">
           {photos.length === 0
             ? jakeVoice.camera.guidance
             : jakeVoice.camera.multiplePhotos}
         </p>
-        <p className="text-sm text-dusty-600 mt-1">
+        <p className="text-sm text-[#706557] mt-1">
           {photos.length} / {maxPhotos} photos
         </p>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/30 border-l-4 border-l-red-500 p-4 mb-4 rounded-lg backdrop-blur-sm">
+          <p className="text-red-300">{error}</p>
         </div>
       )}
 
@@ -132,10 +132,10 @@ export function CameraCapture({
           {!isActive && photos.length < maxPhotos && (
             <button
               onClick={startCamera}
-              className="w-full py-16 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-dashed border-gray-300 transition-colors"
+              className="w-full py-16 bg-white/[0.04] hover:bg-white/[0.07] rounded-lg border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 transition-all"
             >
-              <Camera className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-              <p className="text-gray-600 font-medium">Start Camera</p>
+              <Camera className="w-12 h-12 mx-auto mb-2 text-[#706557]" />
+              <p className="text-[#a89d8a] font-medium">Start Camera</p>
             </button>
           )}
 
@@ -144,7 +144,7 @@ export function CameraCapture({
               <video
                 autoPlay
                 playsInline
-                className="w-full rounded-lg"
+                className="w-full rounded-lg border border-white/[0.1]"
                 ref={(video) => {
                   if (video && isActive) {
                     navigator.mediaDevices
@@ -157,10 +157,10 @@ export function CameraCapture({
               />
               <button
                 onClick={handleCameraCapture}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full shadow-lg hover:scale-110 transition-transform flex items-center justify-center"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 bg-white/[0.15] backdrop-blur-sm rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:scale-110 transition-transform flex items-center justify-center border border-white/[0.2]"
                 disabled={photos.length >= maxPhotos}
               >
-                <div className="w-14 h-14 border-4 border-saloon-500 rounded-full" />
+                <div className="w-14 h-14 border-4 border-amber-400 rounded-full" />
               </button>
             </div>
           )}
@@ -170,12 +170,12 @@ export function CameraCapture({
       {/* Upload View */}
       {mode === "upload" && photos.length < maxPhotos && (
         <label className="block mb-4 cursor-pointer">
-          <div className="py-16 bg-gray-100 hover:bg-gray-200 rounded-lg border-2 border-dashed border-gray-300 transition-colors text-center">
-            <Upload className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-600 font-medium">
+          <div className="py-16 bg-white/[0.04] hover:bg-white/[0.07] rounded-lg border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 transition-all text-center">
+            <Upload className="w-12 h-12 mx-auto mb-2 text-[#706557]" />
+            <p className="text-[#a89d8a] font-medium">
               Click to upload or drag photos here
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-[#706557] mt-1">
               Up to {maxPhotos - photos.length} more photos
             </p>
           </div>
@@ -197,16 +197,16 @@ export function CameraCapture({
               <img
                 src={preview}
                 alt={`Photo ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg"
+                className="w-full h-32 object-cover rounded-lg border border-white/[0.1]"
               />
               <button
                 onClick={() => removePhoto(index)}
-                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                className="absolute top-1 right-1 w-6 h-6 bg-red-500/80 backdrop-blur-sm text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center border border-red-400/30"
                 aria-label="Remove photo"
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-2 py-1 rounded">
+              <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-sm text-[#f5f0e8] text-xs px-2 py-1 rounded">
                 {index + 1}
               </div>
             </div>
@@ -218,7 +218,7 @@ export function CameraCapture({
       {photos.length > 0 && (
         <button
           onClick={handleSubmit}
-          className="w-full py-4 bg-saloon-500 hover:bg-saloon-600 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#1a1510] font-semibold rounded-lg transition-all shadow-[0_4px_16px_rgba(245,158,11,0.2)] hover:shadow-[0_4px_24px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2"
         >
           <Check className="w-5 h-5" />
           Show Jake ({photos.length} photo{photos.length > 1 ? "s" : ""})
