@@ -5,6 +5,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../../db/client.js';
 import { cache } from '../../db/redis.js';
 import { logger } from '../../utils/logger.js';
+import { registerSchema, loginSchema, refreshSchema, validateBody } from '../schemas.js';
 import crypto from 'node:crypto';
 
 export async function authRoutes(fastify: FastifyInstance) {
@@ -13,20 +14,7 @@ export async function authRoutes(fastify: FastifyInstance) {
    * Create a new user account with email + password.
    */
   fastify.post('/register', async (request, reply) => {
-    const { email, password, name, phone } = request.body as {
-      email: string;
-      password: string;
-      name?: string;
-      phone?: string;
-    };
-
-    if (!email || !password) {
-      return reply.status(400).send({ error: 'Email and password required' });
-    }
-
-    if (password.length < 8) {
-      return reply.status(400).send({ error: 'Password must be at least 8 characters' });
-    }
+    const { email, password, name, phone } = validateBody(registerSchema, request.body);
 
     // Check if user exists
     const existing = await db.findOne('users', { email: email.toLowerCase() });
@@ -74,11 +62,7 @@ export async function authRoutes(fastify: FastifyInstance) {
    * Authenticate with email + password.
    */
   fastify.post('/login', async (request, reply) => {
-    const { email, password } = request.body as { email: string; password: string };
-
-    if (!email || !password) {
-      return reply.status(400).send({ error: 'Email and password required' });
-    }
+    const { email, password } = validateBody(loginSchema, request.body);
 
     // Verify password using pgcrypto bcrypt
     const result = await db.query(
@@ -125,11 +109,7 @@ export async function authRoutes(fastify: FastifyInstance) {
    * Exchange a refresh token for new access + refresh tokens.
    */
   fastify.post('/refresh', async (request, reply) => {
-    const { refreshToken } = request.body as { refreshToken: string };
-
-    if (!refreshToken) {
-      return reply.status(400).send({ error: 'Refresh token required' });
-    }
+    const { refreshToken } = validateBody(refreshSchema, request.body);
 
     // Look up refresh token
     const tokenData = await cache.get<{ userId: string }>(`refresh:${refreshToken}`);

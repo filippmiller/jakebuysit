@@ -132,23 +132,25 @@ class MarketplaceAggregator:
         """
         Apply recency weighting to listings.
 
-        Sales <30 days: weight 1.0
-        30-60 days: weight 0.8
-        60-90 days: weight 0.5
+        Adjusts listing prices to reflect recency — newer sales
+        count more toward FMV than older ones.
+
+        Sales <30 days: weight 1.0 (full price)
+        30-60 days: weight 0.8 (20% discount)
+        60-90 days: weight 0.5 (50% discount)
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         now = datetime.now(tz=None)
 
+        weighted = []
         for listing in listings:
             if not listing.sold_date:
-                # If no date, assume recent
+                weighted.append(listing)
                 continue
 
-            # Calculate days ago
             days_ago = (now - listing.sold_date).days
 
-            # Apply weight based on recency
             if days_ago < 30:
                 weight = 1.0
             elif days_ago < 60:
@@ -156,11 +158,21 @@ class MarketplaceAggregator:
             else:
                 weight = 0.5
 
-            # Store weight (we'll use this in FMV calculation)
-            # For now, we could adjust the price to reflect weight
-            # Or store weight as metadata (would need model update)
+            # Apply weight by adjusting effective price
+            # This causes older listings to pull the median/mean down
+            # proportionally to their age, giving recent data more influence.
+            weighted_listing = MarketplaceListing(
+                title=listing.title,
+                price=listing.price * weight,
+                shipping_cost=listing.shipping_cost,
+                condition=listing.condition,
+                sold_date=listing.sold_date,
+                source=listing.source,
+                url=listing.url,
+            )
+            weighted.append(weighted_listing)
 
-        return listings
+        return weighted
 
     def _compute_statistics(self, listings: List[MarketplaceListing]) -> MarketplaceStats:
         """Compute statistical metrics for listings."""

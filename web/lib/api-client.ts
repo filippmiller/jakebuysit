@@ -2,7 +2,7 @@
  * API Client for JakeBuysIt Backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export interface OfferSubmission {
   photos: File[];
@@ -73,30 +73,56 @@ class APIClient {
   }
 
   /**
-   * Submit photos for an offer
+   * Upload photos to S3, then create an offer with the returned URLs.
    */
   async submitOffer(data: OfferSubmission): Promise<OfferResponse> {
+    // Step 1: Upload photos
     const formData = new FormData();
     data.photos.forEach((photo, index) => {
       formData.append(`photo_${index}`, photo);
     });
-    if (data.description) {
-      formData.append("description", data.description);
-    }
-    if (data.userId) {
-      formData.append("userId", data.userId);
-    }
 
-    const response = await fetch(`${this.baseUrl}/api/v1/offers/create`, {
+    const uploadResponse = await fetch(`${this.baseUrl}/api/v1/uploads/photos`, {
       method: "POST",
       body: formData,
+      headers: this.getAuthHeaders(),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to submit offer");
+    if (!uploadResponse.ok) {
+      const err = await uploadResponse.json().catch(() => ({ error: "Upload failed" }));
+      throw new Error(err.error || "Failed to upload photos");
     }
 
-    return response.json();
+    const { photoUrls } = await uploadResponse.json();
+
+    // Step 2: Create offer with uploaded photo URLs
+    const offerResponse = await fetch(`${this.baseUrl}/api/v1/offers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify({
+        photoUrls,
+        userDescription: data.description,
+      }),
+    });
+
+    if (!offerResponse.ok) {
+      const err = await offerResponse.json().catch(() => ({ error: "Offer creation failed" }));
+      throw new Error(err.error || "Failed to create offer");
+    }
+
+    return offerResponse.json();
+  }
+
+  /**
+   * Get auth headers if a token is stored.
+   */
+  private getAuthHeaders(): Record<string, string> {
+    if (typeof window === "undefined") return {};
+    const token = localStorage.getItem("accessToken");
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   /**
@@ -125,6 +151,7 @@ class APIClient {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
         },
         body: JSON.stringify(data),
       }

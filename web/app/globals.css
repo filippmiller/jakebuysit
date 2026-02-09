@@ -31,3 +31,62 @@ body {
     text-wrap: balance;
   }
 }
+
+/* ===== HERO: Blob morph ===== */
+@keyframes blobMorph {
+  0%, 100% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 70% 30% 50% 50% / 30% 65% 35% 70%;
+    transform: rotate(120deg) scale(1.05);
+  }
+  66% {
+    border-radius: 30% 70% 40% 60% / 60% 35% 65% 40%;
+    transform: rotate(240deg) scale(0.95);
+  }
+}
+
+.hero-blob {
+  background: conic-gradient(from 45deg, #e89f4d, #d67d28, #b66420, #94501e, #e89f4d);
+  animation: blobMorph 10s ease-in-out infinite;
+  filter: blur(50px);
+  opacity: 0.3;
+}
+
+/* ===== HERO: Floating $ signs ===== */
+@keyframes heroFloatUp {
+  0%   { transform: translateY(100vh) rotate(-15deg); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateY(-10vh) rotate(15deg); opacity: 0; }
+}
+
+.hero-float-up {
+  animation: heroFloatUp 12s linear infinite;
+}
+
+/* ===== HERO: Cash flutter ===== */
+@keyframes cashFlutter {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+.cash-flutter {
+  animation: cashFlutter 3s ease-in-out infinite;
+}
+
+/* ===== HERO: Ticker scroll ===== */
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: tickerScroll 30s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}

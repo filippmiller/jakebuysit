@@ -1,64 +1,45 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { JakeCharacter } from "@/components/JakeCharacter";
-import { JakeState, jakeVoice } from "@/lib/jake-scripts";
-import { Camera, TrendingUp, DollarSign, Clock } from "lucide-react";
+import { jakeVoice } from "@/lib/jake-scripts";
+import { HeroSection } from "@/components/HeroSection";
+import { apiClient } from "@/lib/api-client";
+
+const FALLBACK_OFFERS = [
+  { item: "iPhone 14 Pro", price: "$520" },
+  { item: "MacBook Air M2", price: "$780" },
+  { item: "Nintendo Switch", price: "$180" },
+  { item: "AirPods Pro", price: "$140" },
+  { item: "iPad Air", price: "$350" },
+  { item: "PS5 Console", price: "$380" },
+];
 
 export default function Home() {
+  const [recentOffers, setRecentOffers] = useState(FALLBACK_OFFERS);
+
+  useEffect(() => {
+    // Try to load real recent offers; fall back to mock data silently
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/offers/recent`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.offers?.length > 0) {
+          setRecentOffers(
+            data.offers.map((o: any) => ({
+              item: `${o.itemBrand || ""} ${o.itemModel || "Item"}`.trim(),
+              price: `$${o.offerAmount}`,
+            }))
+          );
+        }
+      })
+      .catch(() => { /* Keep fallback data */ });
+  }, []);
+
   return (
     <main className="min-h-screen">
       {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center bg-gradient-to-b from-saloon-50 to-white px-4">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          {/* Jake Character */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <JakeCharacter state={JakeState.IDLE} className="w-full h-96" />
-          </motion.div>
-
-          {/* Hero Copy */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            <h1 className="text-6xl font-bold text-dusty-800 mb-4">
-              {jakeVoice.hero.headline}
-            </h1>
-            <p className="text-2xl text-dusty-600 mb-8">
-              {jakeVoice.hero.subheadline}
-            </p>
-
-            <Link
-              href="/submit"
-              className="inline-block px-12 py-6 bg-saloon-500 hover:bg-saloon-600 text-white text-2xl font-bold rounded-full shadow-2xl hover:scale-105 transition-all"
-            >
-              {jakeVoice.hero.cta}
-            </Link>
-
-            {/* Trust Signals */}
-            <div className="mt-8 flex gap-6 text-dusty-600">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                <span className="text-sm">Instant offers</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                <span className="text-sm">Fair prices</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                <span className="text-sm">Real market data</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* How It Works */}
       <section className="py-24 px-4 bg-white">
@@ -103,14 +84,7 @@ export default function Home() {
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="flex gap-6"
             >
-              {[
-                { item: "iPhone 14 Pro", price: "$520" },
-                { item: "MacBook Air M2", price: "$780" },
-                { item: "Nintendo Switch", price: "$180" },
-                { item: "AirPods Pro", price: "$140" },
-                { item: "iPad Air", price: "$350" },
-                { item: "PS5 Console", price: "$380" },
-              ].map((offer, index) => (
+              {recentOffers.map((offer, index) => (
                 <div
                   key={index}
                   className="flex-shrink-0 px-6 py-4 bg-white rounded-lg shadow-md"

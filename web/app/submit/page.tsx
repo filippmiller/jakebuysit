@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CameraCapture } from "@/components/CameraCapture";
 import { apiClient } from "@/lib/api-client";
@@ -12,8 +12,25 @@ export default function SubmitPage() {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const objectUrlsRef = useRef<string[]>([]);
+
+  // Revoke object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const createPreviewUrl = (file: File): string => {
+    const url = URL.createObjectURL(file);
+    objectUrlsRef.current.push(url);
+    return url;
+  };
 
   const handlePhotosCapture = (capturedPhotos: File[]) => {
+    // Revoke previous URLs when replacing photos
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlsRef.current = [];
     setPhotos(capturedPhotos);
   };
 
@@ -69,7 +86,7 @@ export default function SubmitPage() {
                 {photos.map((photo, index) => (
                   <div key={index} className="relative">
                     <img
-                      src={URL.createObjectURL(photo)}
+                      src={createPreviewUrl(photo)}
                       alt={`Photo ${index + 1}`}
                       className="w-full h-32 object-cover rounded-lg"
                     />

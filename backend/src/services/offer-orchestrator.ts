@@ -187,6 +187,16 @@ export const offerOrchestrator = {
       return;
     }
 
+    // Check daily spending limit
+    const todayKey = `spending:daily:${new Date().toISOString().slice(0, 10)}`;
+    const todaySpend = await cache.get<number>(todayKey) || 0;
+    if (todaySpend + pricingResult.offer_amount > config.businessRules.maxOfferAmount * 10) {
+      await this.escalate(offerId, 'daily_limit', `Daily spending limit would be exceeded ($${todaySpend} + $${pricingResult.offer_amount})`);
+      return;
+    }
+    // Track cumulative daily spend (TTL = rest of day, max 24h)
+    await cache.set(todayKey, todaySpend + pricingResult.offer_amount, 86400);
+
     // Fetch offer for jake context
     const offer = await db.findOne('offers', { id: offerId });
 

@@ -4,6 +4,29 @@ import { logger } from '../utils/logger.js';
 
 const { Pool } = pg;
 
+// Allowlist of valid table names to prevent SQL injection via table name interpolation
+const ALLOWED_TABLES = new Set([
+  'users', 'offers', 'shipments', 'verifications', 'payouts',
+  'jake_bucks_transactions', 'fraud_checks', 'audit_log', 'config',
+]);
+
+function assertValidTable(table: string): void {
+  if (!ALLOWED_TABLES.has(table)) {
+    throw new Error(`Invalid table name: ${table}`);
+  }
+}
+
+// Column names must be alphanumeric + underscores only (no SQL injection via column names)
+const COLUMN_NAME_RE = /^[a-z_][a-z0-9_]*$/i;
+
+function assertValidColumns(keys: string[]): void {
+  for (const key of keys) {
+    if (!COLUMN_NAME_RE.test(key)) {
+      throw new Error(`Invalid column name: ${key}`);
+    }
+  }
+}
+
 class Database {
   private pool: pg.Pool;
 
@@ -59,7 +82,9 @@ class Database {
 
   // Helper methods
   async findOne<T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any>): Promise<T | null> {
+    assertValidTable(table);
     const keys = Object.keys(conditions);
+    assertValidColumns(keys);
     const values = Object.values(conditions);
     const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
 
@@ -70,7 +95,9 @@ class Database {
   }
 
   async findMany<T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any> = {}): Promise<T[]> {
+    assertValidTable(table);
     const keys = Object.keys(conditions);
+    assertValidColumns(keys);
     const values = Object.values(conditions);
 
     let query = `SELECT * FROM ${table}`;
@@ -84,7 +111,9 @@ class Database {
   }
 
   async create<T extends pg.QueryResultRow = any>(table: string, data: Record<string, any>): Promise<T> {
+    assertValidTable(table);
     const keys = Object.keys(data);
+    assertValidColumns(keys);
     const values = Object.values(data);
     const placeholders = keys.map((_, i) => `$${i + 1}`);
 
@@ -103,9 +132,11 @@ class Database {
     conditions: Record<string, any>,
     data: Record<string, any>
   ): Promise<T | null> {
+    assertValidTable(table);
     const dataKeys = Object.keys(data);
-    const dataValues = Object.values(data);
     const condKeys = Object.keys(conditions);
+    assertValidColumns([...dataKeys, ...condKeys]);
+    const dataValues = Object.values(data);
     const condValues = Object.values(conditions);
 
     const setClauses = dataKeys.map((key, i) => `${key} = $${i + 1}`);
@@ -123,7 +154,9 @@ class Database {
   }
 
   async delete(table: string, conditions: Record<string, any>): Promise<number> {
+    assertValidTable(table);
     const keys = Object.keys(conditions);
+    assertValidColumns(keys);
     const values = Object.values(conditions);
     const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
 

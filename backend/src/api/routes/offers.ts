@@ -13,6 +13,7 @@ import { cache } from '../../db/redis.js';
 import { offerOrchestrator } from '../../services/offer-orchestrator.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { logger } from '../../utils/logger.js';
+import { createOfferSchema, declineOfferSchema, listOffersQuerySchema, uuidParamSchema, validateBody, validateParams, validateQuery } from '../schemas.js';
 
 export async function offerRoutes(fastify: FastifyInstance) {
 
@@ -23,26 +24,16 @@ export async function offerRoutes(fastify: FastifyInstance) {
    */
   fastify.post('/', { preHandler: optionalAuth }, async (request, reply) => {
     const userId = (request as any).userId || null;
-    const { photoUrls, userDescription } = request.body as {
-      photoUrls: string[];
-      userDescription?: string;
-    };
+    const { photoUrls, userDescription } = validateBody(createOfferSchema, request.body);
 
-    if (!photoUrls || photoUrls.length === 0) {
-      return reply.status(400).send({ error: 'At least one photo URL required' });
-    }
-
-    if (photoUrls.length > 6) {
-      return reply.status(400).send({ error: 'Maximum 6 photos allowed' });
-    }
-
-    // Rate limit: max offers per hour
-    if (userId) {
-      const rateKey = cache.keys.rateLimitUser(userId, 'offers-hour');
-      const count = await cache.incrementWithExpiry(rateKey, 3600);
-      if (count > 5) {
-        return reply.status(429).send({ error: 'Too many offers. Try again in an hour, partner.' });
-      }
+    // Rate limit: max offers per hour (by user or by IP for anonymous)
+    const rateIdentifier = userId || request.ip;
+    const rateKey = userId
+      ? cache.keys.rateLimitUser(userId, 'offers-hour')
+      : cache.keys.rateLimitIP(request.ip, 'offers-hour');
+    const count = await cache.incrementWithExpiry(rateKey, 3600);
+    if (count > 5) {
+      return reply.status(429).send({ error: 'Too many offers. Try again in an hour, partner.' });
     }
 
     try {
@@ -67,7 +58,7 @@ export async function offerRoutes(fastify: FastifyInstance) {
    * Public endpoint — the offer ID acts as a capability token.
    */
   fastify.get('/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = validateParams(uuidParamSchema, request.params);
 
     // Try cache first
     const cached = await cache.get<any>(cache.keys.offer(id));
@@ -142,7 +133,7 @@ export async function offerRoutes(fastify: FastifyInstance) {
    * Accept an offer. Requires auth (user must register/login first).
    */
   fastify.post('/:id/accept', { preHandler: requireAuth }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = validateParams(uuidParamSchema, request.params);
     const userId = (request as any).userId;
 
     const offer = await db.findOne('offers', { id });
@@ -197,8 +188,8 @@ export async function offerRoutes(fastify: FastifyInstance) {
    * Decline an offer. Optional auth.
    */
   fastify.post('/:id/decline', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const { reason } = (request.body as { reason?: string }) || {};
+    const { id } = validateParams(uuidParamSchema, request.params);
+    const { reason } = validateBody(declineOfferSchema, request.body || {});
 
     const offer = await db.findOne('offers', { id });
 
@@ -237,15 +228,21 @@ export async function offerRoutes(fastify: FastifyInstance) {
    */
   fastify.get('/', { preHandler: requireAuth }, async (request, _reply) => {
     const userId = (request as any).userId;
-    const { status, limit, offset } = request.query as {
-      status?: string;
-      limit?: string;
-      offset?: string;
-    };
+    const { status, limit: pageLimit, offset: pageOffset } = validateQuery(listOffersQuerySchema, request.query);
 
-    const pageLimit = Math.min(parseInt(limit || '20', 10), 50);
-    const pageOffset = parseInt(offset || '0', 10);
+    // Count total matching rows first (for correct pagination metadata)
+    let countQuery = `SELECT COUNT(*) FROM offers WHERE user_id = $1`;
+    const countParams: any[] = [userId];
 
+    if (status) {
+      countQuery += ` AND status = $2`;
+      countParams.push(status);
+    }
+
+    const countResult = await db.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    // Fetch the page
     let query = `SELECT * FROM offers WHERE user_id = $1`;
     const params: any[] = [userId];
 
@@ -272,7 +269,37 @@ export async function offerRoutes(fastify: FastifyInstance) {
         createdAt: o.created_at,
         acceptedAt: o.accepted_at,
       })),
-      total: result.rowCount,
+      total,
     };
+  });
+
+  /**
+   * GET /api/v1/offers/recent
+   * Public endpoint — shows recent completed offers for the landing page ticker.
+   * Cached for 5 minutes to reduce DB load.
+   */
+  fastify.get('/recent', async (_request, _reply) => {
+    const cacheKey = 'offers:recent:ticker';
+    const cached = await cache.get<any>(cacheKey);
+    if (cached) return cached;
+
+    const result = await db.query(
+      `SELECT item_brand, item_model, offer_amount
+       FROM offers
+       WHERE status IN ('ready', 'accepted', 'paid') AND item_brand IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT 10`,
+    );
+
+    const response = {
+      offers: result.rows.map((o: any) => ({
+        itemBrand: o.item_brand,
+        itemModel: o.item_model,
+        offerAmount: parseFloat(o.offer_amount),
+      })),
+    };
+
+    await cache.set(cacheKey, response, 300); // 5 min cache
+    return response;
   });
 }

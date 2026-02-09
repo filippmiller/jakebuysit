@@ -37,6 +37,7 @@ const config: Config = {
         },
       },
       fontFamily: {
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
         western: ['var(--font-western)', 'serif'],
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },

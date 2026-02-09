@@ -1,5 +1,14 @@
 import 'dotenv/config';
 
+// Fail fast if required env vars are missing
+const REQUIRED_ENV_VARS = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'] as const;
+
+for (const envVar of REQUIRED_ENV_VARS) {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}. Server cannot start.`);
+  }
+}
+
 export const config = {
   server: {
     port: parseInt(process.env.PORT || '8080', 10),
