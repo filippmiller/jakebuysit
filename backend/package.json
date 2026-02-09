@@ -44,7 +44,6 @@
     "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.66.0",
     "stripe": "^18.3.0",
-    "@paypal/paypal-server-sdk": "^0.8.1",
     "winston": "^3.17.0",
     "@sentry/node": "^8.46.0",
     "pino": "^9.6.0",
