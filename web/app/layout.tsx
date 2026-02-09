@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, Outfit } from "next/font/google";
-import nextDynamic from "next/dynamic";
+import { Navigation } from "@/components/Navigation";
 import "./globals.css";
-
-// Force dynamic rendering for all pages — browser-only deps (Rive, Howler) break during SSG
-export const dynamic = 'force-dynamic';
-
-const Navigation = nextDynamic(() => import("@/components/Navigation").then(m => m.Navigation), { ssr: false });
 
 const syne = Syne({ subsets: ["latin"], variable: '--font-display' });
 const outfit = Outfit({ subsets: ["latin"], variable: '--font-sans' });
