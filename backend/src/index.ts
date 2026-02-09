@@ -15,6 +15,7 @@ import { shipmentsRoutes } from './api/routes/shipments.js';
 import { webhooksRoutes } from './api/routes/webhooks.js';
 import { adminRoutes } from './api/routes/admin.js';
 import { uploadRoutes } from './api/routes/uploads.js';
+import { offerStreamRoutes } from './api/routes/offer-stream.js';
 import { logger } from './utils/logger.js';
 
 const fastify = Fastify({
@@ -82,6 +83,7 @@ fastify.get('/health', async (_request, reply) => {
 // Routes
 fastify.register(authRoutes, { prefix: '/api/v1/auth' });
 fastify.register(offerRoutes, { prefix: '/api/v1/offers' });
+fastify.register(offerStreamRoutes, { prefix: '/api/v1/offers' });
 fastify.register(usersRoutes, { prefix: '/api/v1/users' });
 fastify.register(shipmentsRoutes, { prefix: '/api/v1/shipments' });
 fastify.register(webhooksRoutes, { prefix: '/webhooks' });

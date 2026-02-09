@@ -29,9 +29,12 @@ export function ResearchAnimation({
   const [salesCount, setSalesCount] = useState(0);
   const [pricePoints, setPricePoints] = useState<number[]>([]);
 
-  // WebSocket connection for real-time updates
-  const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/api/v1/offers/${offerId}/stream`;
-  const { messages } = useWebSocket(wsUrl);
+  // WebSocket connection for real-time updates, with HTTP polling fallback
+  const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace("http", "ws")}/api/v1/offers/${offerId}/stream`;
+  const { messages } = useWebSocket(wsUrl, {
+    fallbackApiUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+    offerId,
+  });
 
   // Process WebSocket messages
   useEffect(() => {
