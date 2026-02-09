@@ -58,7 +58,7 @@ class Database {
   }
 
   // Helper methods
-  async findOne<T = any>(table: string, conditions: Record<string, any>): Promise<T | null> {
+  async findOne<T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any>): Promise<T | null> {
     const keys = Object.keys(conditions);
     const values = Object.values(conditions);
     const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
@@ -69,7 +69,7 @@ class Database {
     return result.rows[0] || null;
   }
 
-  async findMany<T = any>(table: string, conditions: Record<string, any> = {}): Promise<T[]> {
+  async findMany<T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any> = {}): Promise<T[]> {
     const keys = Object.keys(conditions);
     const values = Object.values(conditions);
 
@@ -83,7 +83,7 @@ class Database {
     return result.rows;
   }
 
-  async create<T = any>(table: string, data: Record<string, any>): Promise<T> {
+  async create<T extends pg.QueryResultRow = any>(table: string, data: Record<string, any>): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map((_, i) => `$${i + 1}`);
@@ -98,7 +98,7 @@ class Database {
     return result.rows[0];
   }
 
-  async update<T = any>(
+  async update<T extends pg.QueryResultRow = any>(
     table: string,
     conditions: Record<string, any>,
     data: Record<string, any>
