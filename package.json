@@ -5,9 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch services/jake/index.ts",
+    "dev": "tsx watch services/jake/server.ts",
+    "server": "tsx services/jake/server.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
     "test": "vitest",
     "lint": "eslint . --ext .ts",
     "type-check": "tsc --noEmit"
@@ -24,12 +25,14 @@
   "license": "PROPRIETARY",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
+    "@fastify/cors": "^10.0.1",
     "@rive-app/canvas": "^2.23.3",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "fastify": "^5.2.0",
     "howler": "^2.2.4",
     "pg": "^8.13.1",
+    "pino-pretty": "^13.0.0",
     "redis": "^4.7.0",
     "aws-sdk": "^2.1691.0",
     "bullmq": "^5.26.2",
