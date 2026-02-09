@@ -28,7 +28,8 @@ export function fillTemplate(
 ): string {
   let text = template.template;
   for (const [key, val] of Object.entries(values)) {
-    text = text.replace(new RegExp(`\\[${key}\\]`, 'g'), val);
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text.replace(new RegExp(`\\[${escaped}\\]`, 'g'), val);
   }
   return text;
 }
