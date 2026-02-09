@@ -130,3 +130,35 @@ Built complete Backend API & Infrastructure (Agent 4) for JakeBuysIt. Created Fa
 → `.claude/sessions/2026-02-09-191500-backend-infrastructure.md`
 
 ---
+
+## [2026-02-09 17:25] — Redesign Hero Section with Jack Photo, Speech Bubbles & Glass Cards
+
+**Area:** UI/Hero / Frontend
+**Type:** feature
+
+### Files Changed
+- `web/components/HeroSection.tsx` — Complete rewrite: 3-column grid, jack1.png photo, animated speech bubbles, glassmorphism category cards, floating $ signs, scrolling ticker
+- `web/app/globals.css` — Added CSS keyframes: blobMorph, heroFloatUp, cashFlutter, tickerScroll (prior session)
+- `web/app/layout.tsx` — Switched fonts from Inter to Syne (display) + Outfit (body) (prior session)
+- `web/tailwind.config.ts` — Added display font family (prior session)
+- `web/app/page.tsx` — Replaced old hero with `<HeroSection />` component (prior session)
+- `web/public/jack1.png` — New Jake photo (clean cutout, no built-in speech bubble, 1024x1536)
+
+### Functions/Symbols Modified
+- `HeroSection()` — Complete rewrite with 3-column grid layout, ambient glows, floating $ signs, scrolling ticker
+- `GlassCard()` — New component: glassmorphism cards with Lucide icons and bob animation
+- `SpeechBubbles()` — New component: cycling animated speech bubbles (useState/useEffect + AnimatePresence)
+- `CATEGORIES` — Data array for 6 category cards (Computers, Cell Phones, Game Consoles, Computer Parts, Electronics, Everything Else)
+- `SPEECH_LINES` — 3 Jake quotes cycling every 4 seconds
+- `TICKER_ITEMS` — 8 items for scrolling ticker bar
+
+### Database Tables
+N/A
+
+### Summary
+Redesigned the hero section for JakeBuysIt's landing page. Replaced SVG illustration with real Jake photo (`jack1.png`), added animated speech bubbles cycling through 3 Jake quotes on the right side of the photo, created 6 glassmorphism category cards in a vertical stack between the headline and Jake. Fixed a rendering issue where Next.js `<Image>` component couldn't handle the large 3.2MB PNG — switched to regular `<img>` tag. Layout uses a 3-column CSS grid with "SHOW ME / WHATCHA / GOT." headline (WHATCHA in amber gradient), CTA button, and scrolling ticker at bottom.
+
+### Session Notes
+→ `.claude/sessions/2026-02-09-172500-hero-redesign.md`
+
+---

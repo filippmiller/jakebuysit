@@ -36,6 +36,29 @@
 
 ---
 
+## [2026-02-09] - Hero Section Redesign
+
+**Status**: Completed
+**Duration**: ~60 minutes
+**Commits**: f01d1540
+
+### What was done
+- Redesigned hero section with real Jake photo (jack1.png), animated speech bubbles, glassmorphism category cards
+- 3-column grid layout: headline | glass card stack | Jake with speech bubbles
+- Switched fonts from Inter to Syne (display) + Outfit (body)
+- Fixed Next.js Image rendering issue with large PNG — switched to regular `<img>` tag
+
+### Decisions made
+- Used `<img>` instead of Next.js `<Image>` — 3.2MB PNG silently fails with Image component
+- 3-column grid for clean separation vs scattered absolute positioning
+
+### Next steps
+- Fix the "next page" (likely /submit) — user flagged this for next session
+
+**Session notes**: `.claude/sessions/2026-02-09-172500-hero-redesign.md`
+
+---
+
 # Work Log - JakeBuysIt Frontend
 
 ## [2026-02-09] - Frontend Foundation (Agent 1)
