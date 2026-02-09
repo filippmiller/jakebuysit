@@ -6,7 +6,7 @@ import websocket from '@fastify/websocket';
 import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { db } from './db/client.js';
-import { setupRedis } from './db/redis.js';
+import { setupRedis, getRedis } from './db/redis.js';
 import { setupQueues, shutdown as shutdownQueues } from './queue/workers.js';
 import { authRoutes } from './api/routes/auth.js';
 import { offerRoutes } from './api/routes/offers.js';
@@ -62,7 +62,7 @@ fastify.get('/health', async (_request, reply) => {
   }
 
   try {
-    const redis = (await import('./db/redis.js')).getRedis();
+    const redis = getRedis();
     await redis.ping();
     checks.redis = 'connected';
   } catch {

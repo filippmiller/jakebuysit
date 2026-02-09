@@ -64,6 +64,16 @@ export const cache = {
     return count;
   },
 
+  // Atomic float increment with TTL (for spending limits, counters, etc.)
+  async incrByFloatWithExpiry(key: string, amount: number, ttlSeconds: number): Promise<number> {
+    const result = await redisClient.incrByFloat(key, amount);
+    // Set TTL only on first write (when result equals the amount we just added)
+    if (result === amount) {
+      await redisClient.expire(key, ttlSeconds);
+    }
+    return result;
+  },
+
   // Pattern helpers
   keys: {
     user: (id: string) => `user:${id}`,
