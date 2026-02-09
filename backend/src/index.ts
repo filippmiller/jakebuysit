@@ -98,7 +98,7 @@ async function start() {
     // Start server
     await fastify.listen({
       port: config.server.port,
-      host: config.server.host,
+      host: '0.0.0.0',
     });
 
     logger.info(`Server listening on ${config.server.host}:${config.server.port}`);
