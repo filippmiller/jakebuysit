@@ -1,4 +1,264 @@
+## [2026-02-10] - [Phase 3 Team 1] Real-time Marketplace Scraper Implementation
+
+**Status**: Completed
+**Duration**: ~120 minutes
+**Beads Issue**: pawn-40s
+**Commits**: Pending
+
+### What was implemented
+
+#### 1. Enhanced eBay Scraper (`services/marketplace/ebay.py`)
+- ✅ Real-time scraping with `real_time=True` parameter
+- ✅ Rate limiting: 1 request/second to avoid bans
+- ✅ Exponential backoff on errors (2s, 4s, 8s)
+- ✅ OAuth token auto-refresh
+- ✅ Health metrics tracking (success rate, avg response time, blocked count)
+- ✅ Retry logic with 3 max attempts
+- ✅ Sold listings for last 30 days (configurable)
+
+#### 2. Facebook Marketplace Scraper (`services/marketplace/facebook.py`) - NEW
+- ✅ Playwright-based headless browser scraping
+- ✅ Rate limiting: 1 request/second
+- ✅ Anti-bot detection bypass (realistic user agent)
+- ✅ Active listings extraction (price, condition, location)
+- ✅ Dynamic content loading with scroll
+- ✅ Health metrics tracking
+- ✅ Error handling with retries
+
+#### 3. Live Comparables API Endpoint (`services/marketplace/router.py`)
+- ✅ `GET /api/v1/marketplace/comparables` endpoint
+- ✅ Query params: item, category, condition, force_live
+- ✅ Redis caching with 1 hour TTL
+- ✅ Parallel scraping from eBay + Facebook
+- ✅ Combined results with source breakdown
+- ✅ Health metrics in response
+- ✅ Data freshness tracking
+
+#### 4. FMV Integration (`services/pricing/fmv.py`)
+- ✅ `data_freshness` field added to FMVResponse model
+- ✅ Live data support in `calculate_fmv()`
+- ✅ Confidence adjustment based on freshness:
+  - Live data: no penalty
+  - Cached data: -5 confidence
+  - Stale data: -15 confidence
+- ✅ Fallback to cached data on scraper failures
+
+#### 5. Marketplace Aggregator Updates (`services/marketplace/aggregator.py`)
+- ✅ `use_live_data` parameter in `research_product()`
+- ✅ Facebook Marketplace integration
+- ✅ Data freshness tracking ("live", "cached", "stale")
+- ✅ Graceful degradation on scraper failures
+- ✅ Sources checked list in response
+
+#### 6. Configuration Updates
+- ✅ Settings class allows extra .env fields (`extra="ignore"`)
+- ✅ Redis cache import path fixed
+
+#### 7. Documentation (`services/marketplace/README.md`) - NEW
+- ✅ Complete API documentation with examples
+- ✅ Architecture diagrams
+- ✅ Integration guide with FMV calculation
+- ✅ Error scenarios and troubleshooting
+- ✅ Performance considerations
+- ✅ Future enhancements roadmap
+
+### Technical Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Playwright for Facebook | Dynamic content requires browser automation |
+| 1 req/sec rate limit | Balance between speed and ban avoidance |
+| 1 hour cache TTL | Recent enough for FMV, reduces scraper load |
+| Exponential backoff | Industry standard for retry logic |
+| Parallel scraping | Faster than sequential (asyncio) |
+| Health metrics | Monitor scraper reliability over time |
+
+### Testing Performed
+
+- ✅ Module imports (all scrapers, router, models)
+- ✅ Router has 3 routes: /research, /comparables, /health
+- ✅ eBay client health metrics working
+- ✅ Facebook client initializes correctly
+- ⚠️ Live API testing pending (requires eBay credentials)
+
+### Files Created
+1. `services/marketplace/facebook.py` - Facebook scraper (370 lines)
+2. `services/marketplace/README.md` - Documentation (600 lines)
+
+### Files Modified
+1. `services/marketplace/ebay.py` - Added real-time features
+2. `services/marketplace/router.py` - Added /comparables endpoint
+3. `services/marketplace/aggregator.py` - Live data integration
+4. `services/marketplace/models.py` - Added data_freshness field
+5. `services/pricing/fmv.py` - Data freshness tracking
+6. `config/settings.py` - Allow extra .env fields
+
+### Integration Points
+- Backend: `/api/v1/marketplace/comparables` endpoint ready
+- FMV: Automatically uses live data when available
+- Cache: 1 hour TTL for comparables via Redis
+- Pipeline: No changes needed (transparent integration)
+
+### Known Limitations
+1. Facebook scraper may break on UI changes (browser automation)
+2. eBay requires valid API credentials (not tested end-to-end)
+3. Facebook has no sold dates (active listings only)
+4. Playwright browser overhead (~5-10s per request)
+
+### Next Steps
+1. Test with real eBay API credentials
+2. Test Facebook scraper with live site
+3. Monitor health metrics over time
+4. Consider proxy rotation for Facebook (if blocked)
+5. Add Amazon scraper (future enhancement)
+
+**Session notes**: `.claude/sessions/2026-02-10-realtime-scraper.md` (to be created)
+
+---
+
 # Work Log - JakeBuysIt
+
+## [2026-02-10] - [Phase 3 Team 4] eBay OAuth Integration and Crossposting
+
+**Status**: Completed
+**Duration**: ~90 minutes
+**Beads Issue**: pawn-qtz
+**Commits**: Pending
+
+### What was done
+
+#### 1. Database Schema (backend/src/db/migrations/003_ebay_integration.sql)
+- ✅ Created `ebay_accounts` table for OAuth token storage
+- ✅ Added eBay-related columns to `offers` table (listing_id, listing_url, crosspost_status, error)
+- ✅ Indexes for performance and token expiry tracking
+- ✅ Trigger for updated_at column
+
+#### 2. eBay Integration Layer (backend/src/integrations/ebay/)
+- ✅ Created auth.ts - OAuth 2.0 flow implementation
+  - Authorization URL generation
+  - Code-to-token exchange
+  - Token refresh mechanism
+  - eBay user info retrieval
+- ✅ Created client.ts - eBay Trading API wrapper
+  - Fixed-price listing creation
+  - XML request/response builders
+  - Fee calculation
+  - Error handling
+- ✅ Created types.ts - TypeScript interfaces
+  - OAuth token structures
+  - Listing request/response types
+  - Condition and category ID mappings
+
+#### 3. Backend API Routes (backend/src/api/routes/integrations.ts)
+- ✅ `GET /ebay/authorize` - Initiate OAuth flow with CSRF protection
+- ✅ `GET /ebay/callback` - Handle OAuth callback, store tokens
+- ✅ `POST /ebay/disconnect` - Disconnect eBay account
+- ✅ `GET /ebay/status` - Get connection status and settings
+- ✅ `POST /ebay/auto-crosspost` - Toggle auto-crosspost feature
+- ✅ `POST /ebay/crosspost/:offerId` - Crosspost offer to eBay
+- ✅ Automatic token refresh before API calls
+- ✅ Comprehensive error handling and logging
+
+#### 4. Frontend Settings UI (web/app/settings/integrations/page.tsx)
+- ✅ eBay account connection management
+- ✅ Connection status display with username
+- ✅ Auto-crosspost toggle switch
+- ✅ OAuth callback handling with success/error messages
+- ✅ Account disconnect with confirmation dialog
+- ✅ Feature benefits and fee warnings
+
+#### 5. Crosspost Component (web/components/CrosspostButton.tsx)
+- ✅ Modal dialog for crossposting confirmation
+- ✅ Fee disclaimer and listing preview
+- ✅ Success/error state handling
+- ✅ Direct link to eBay listing after posting
+- ✅ Retry logic for failed crossposts
+- ✅ Loading states and pending status display
+
+#### 6. UI Component Library (web/components/ui/)
+- ✅ Created Button component with variants (default, outline, ghost, destructive)
+- ✅ Created Card components (Card, CardHeader, CardTitle, CardDescription, CardContent)
+- ✅ Created Switch component for toggles
+- ✅ Created Label component
+- ✅ Created Alert component with variants
+- ✅ Created Dialog components using Radix UI
+- ✅ All components styled with western/Jake theme
+
+#### 7. Configuration & Documentation
+- ✅ Updated backend config.ts with eBay settings
+- ✅ Updated .env.example with eBay credentials
+- ✅ Registered integration routes in server
+- ✅ Created comprehensive setup guide (docs/EBAY_INTEGRATION_SETUP.md)
+- ✅ Created module documentation (backend/src/integrations/ebay/README.md)
+
+### Technical Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| OAuth 2.0 over legacy Auth'n'Auth | Modern, more secure, eBay's recommended method |
+| Token refresh 5 min before expiry | Prevents race conditions during API calls |
+| XML-based Trading API | Required for AddFixedPriceItem endpoint |
+| State parameter for CSRF | Security best practice for OAuth flows |
+| Separate integrations routes | Clean separation of concerns, easier testing |
+| Auto-crosspost as opt-in | User control, avoid unexpected listings |
+| Store tokens unencrypted (dev) | TODO: Add pgcrypto encryption for production |
+
+### Files Created
+
+**Backend**:
+- `backend/src/db/migrations/003_ebay_integration.sql` (48 lines)
+- `backend/src/integrations/ebay/types.ts` (105 lines)
+- `backend/src/integrations/ebay/auth.ts` (126 lines)
+- `backend/src/integrations/ebay/client.ts` (273 lines)
+- `backend/src/integrations/ebay/README.md` (443 lines)
+- `backend/src/api/routes/integrations.ts` (277 lines)
+
+**Frontend**:
+- `web/app/settings/integrations/page.tsx` (278 lines)
+- `web/components/CrosspostButton.tsx` (223 lines)
+- `web/components/ui/button.tsx` (51 lines)
+- `web/components/ui/card.tsx` (64 lines)
+- `web/components/ui/switch.tsx` (43 lines)
+- `web/components/ui/label.tsx` (19 lines)
+- `web/components/ui/alert.tsx` (36 lines)
+- `web/components/ui/dialog.tsx` (106 lines)
+
+**Documentation**:
+- `docs/EBAY_INTEGRATION_SETUP.md` (238 lines)
+
+**Modified**:
+- `backend/src/config.ts` (+7 lines) - Added eBay config
+- `backend/src/index.ts` (+2 lines) - Registered integration routes
+- `backend/.env.example` (+6 lines) - Added eBay env vars
+
+### Testing Performed
+- [ ] Database migration (TODO: Run migration)
+- [ ] Backend endpoints (TODO: Start backend and test OAuth flow)
+- [ ] Frontend UI (TODO: Start frontend and test connection flow)
+- [ ] End-to-end crossposting (TODO: Create offer, accept, crosspost)
+
+### Next Steps
+1. Run database migration: `psql $DATABASE_URL -f backend/src/db/migrations/003_ebay_integration.sql`
+2. Register eBay developer app at https://developer.ebay.com
+3. Add eBay credentials to `.env` file
+4. Test OAuth flow end-to-end
+5. Add token encryption with pgcrypto for production
+6. Implement inventory sync (eBay sales → JakeBuysIt)
+7. Add unit tests for OAuth flow
+8. Add integration tests for crossposting
+
+### Production Checklist
+- [ ] Register production eBay app
+- [ ] Enable token encryption at rest
+- [ ] Set up HTTPS for OAuth callback
+- [ ] Configure rate limiting for eBay API
+- [ ] Test full OAuth and crossposting flow
+- [ ] Document eBay fee structure for users
+- [ ] Set up monitoring for eBay API errors
+
+**Session notes**: `.claude/sessions/2026-02-10-ebay-integration.md`
+
+---
 
 ## [2026-02-10] - [Phase 3 Team 3] Analytics Dashboard with Market Trends
 
