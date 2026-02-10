@@ -14,6 +14,13 @@ export async function authRoutes(fastify: FastifyInstance) {
    * Create a new user account with email + password.
    */
   fastify.post('/register', async (request, reply) => {
+    // Rate limit: 3 registrations per 10 minutes per IP
+    const regRateKey = cache.keys.rateLimitIP(request.ip, 'register-10m');
+    const regCount = await cache.incrementWithExpiry(regRateKey, 600);
+    if (regCount > 3) {
+      return reply.status(429).send({ error: 'Too many registration attempts. Try again later.' });
+    }
+
     const { email, password, name, phone } = validateBody(registerSchema, request.body);
 
     // Check if user exists
@@ -62,6 +69,13 @@ export async function authRoutes(fastify: FastifyInstance) {
    * Authenticate with email + password.
    */
   fastify.post('/login', async (request, reply) => {
+    // Rate limit: 5 login attempts per minute per IP
+    const loginRateKey = cache.keys.rateLimitIP(request.ip, 'login-1m');
+    const loginCount = await cache.incrementWithExpiry(loginRateKey, 60);
+    if (loginCount > 5) {
+      return reply.status(429).send({ error: 'Too many login attempts. Wait a minute, partner.' });
+    }
+
     const { email, password } = validateBody(loginSchema, request.body);
 
     // Verify password using pgcrypto bcrypt

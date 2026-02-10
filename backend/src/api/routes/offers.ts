@@ -146,6 +146,11 @@ export async function offerRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: `Cannot accept offer in '${offer.status}' status` });
     }
 
+    // Ownership check: if the offer was created by a specific user, only that user can accept it
+    if (offer.user_id && offer.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only accept your own offers, partner.' });
+    }
+
     // Check expiry
     if (offer.expires_at && new Date(offer.expires_at) < new Date()) {
       await db.update('offers', { id }, { status: 'expired' });

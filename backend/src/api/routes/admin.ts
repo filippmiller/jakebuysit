@@ -213,7 +213,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       created_at: 'o.created_at', offer_amount: 'o.offer_amount', status: 'o.status',
       item_brand: 'o.item_brand', ai_confidence: 'o.ai_confidence',
     };
-    const sortCol = allowedSortColumns[q.sort] || 'o.created_at';
+    const sortCol = allowedSortColumns[q.sort ?? 'created_at'] || 'o.created_at';
     const sortOrder = q.order === 'asc' ? 'ASC' : 'DESC';
 
     const [countResult, dataResult] = await Promise.all([

@@ -11,8 +11,22 @@
  * - 3 regular test users with mock offers, shipments, payouts
  */
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const { Pool } = pg;
+
+// Load .env from project root if DATABASE_URL not set
+if (!process.env.DATABASE_URL) {
+  try {
+    const envPath = resolve(import.meta.dirname || '.', '../../..', '.env');
+    const envContent = readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const match = line.match(/^([A-Z_]+)=(.+)$/);
+      if (match) process.env[match[1]] = match[2].trim();
+    }
+  } catch { /* ignore */ }
+}
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/jakebuysit';
 
