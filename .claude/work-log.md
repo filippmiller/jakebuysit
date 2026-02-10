@@ -1,3 +1,165 @@
+## [2026-02-11] - Marketplace UX Research & Recommendations
+
+**Status**: Completed
+**Duration**: ~90 minutes
+**Focus**: Competitive UX analysis and JakeBuysIt-specific improvements
+**Deliverable**: `.claude/research/marketplace-ux-research-2026.md`
+
+### What was done
+- ✅ Researched 8 leading marketplace platforms (Facebook, OfferUp, Mercari, Vinted, Poshmark, Depop, eBay, Amazon)
+- ✅ Analyzed 8 UX dimensions: photo submission, AI auto-fill, listing flow, mobile optimization, trust signals, pricing transparency, conversational tone, speed optimization
+- ✅ Created comprehensive 30+ page research document with platform analysis
+- ✅ Identified 5 high-impact UX improvements for JakeBuysIt submit flow
+- ✅ Prioritized improvements (P0-P2) with implementation roadmap
+
+### Platform Analysis Summary
+
+**Photo Submission Patterns**:
+- Facebook: 10 photos max, quality guidance (natural light, multiple angles, scale reference)
+- OfferUp: 4-step process (Photo → Details → Price → Finish)
+- Mercari: Single-screen listing (optimized for speed)
+- Vinted: Mobile-first gamified flow with motivational prompts
+
+**AI Auto-Fill Leaders**:
+- **Depop** (2026 industry leader): Photo → AI generates full description with community tone
+- **eBay**: "Magical listing tool" generates from images
+- **Amazon**: AI product descriptions with titles/bullets/details
+
+**Trust Signal Types**:
+1. Identity verification badges ("Verified Seller" checkmarks)
+2. Performance recognition ("Top Rated Seller", "Fast Shipper")
+3. Security badges (secure checkout, money-back guarantees)
+4. Social proof (ratings, reviews, transaction counts)
+
+**Mobile-First Standards**:
+- Core Web Vitals: < 2.5s LCP, < 1.8s FCP
+- Faster load times → 20-40% conversion lift
+- Titles must work when truncated on mobile
+- Touch targets minimum 44x44px
+
+### 5 Recommended UX Improvements
+
+| # | Improvement | Priority | Impact | Timeline |
+|---|-------------|----------|--------|----------|
+| 1 | **AI Description Auto-Fill** | P1 | 60-70% time savings | Week 2-3 |
+| 2 | **Progressive Trust Badge System** | P2 | 35-50% confidence boost | Week 4-5 |
+| 3 | **Transparent Pricing with Market Comps** | P0 | Critical trust builder | Week 1-2 |
+| 4 | **4-Step Mobile-First Flow** | P1 | Reduces abandonment | Week 3-4 |
+| 5 | **Jake's Voice Consistency** | P2 | Brand differentiation | Ongoing |
+
+### Key Insights
+
+**From Research**:
+- Showing marketplace sold comps alongside AI valuations **dramatically increases trust**
+- Modern users expect AI auto-fill (Depop: photo → complete listing in seconds)
+- Step-by-step flows (OfferUp) reduce cognitive load vs single-page forms
+- Verification badges increase buyer confidence by 35-50%
+- Casual conversational tone works IF consistent (no forced puns during critical actions)
+
+**JakeBuysIt-Specific**:
+- Jake's western personality is a differentiator — must maintain clarity over cleverness
+- Trust is critical for pawn/resale — users need to verify AI isn't "hallucinating" prices
+- Mobile-first design essential (60-70% expected mobile traffic)
+- Speed-to-offer competitive advantage — AI auto-fill aligns with this
+
+### Technical Recommendations
+
+**#1: AI Description Auto-Fill** (P1)
+```
+User uploads photo → Agent 2 Vision AI extracts:
+  - Category, brand, model, condition
+  - Pre-populated description in Jake's tone
+  - User confirms/edits → Proceed
+```
+- Implementation: New Agent 2 endpoint `/api/v2/describe-item`
+- Backend calls Agent 2 after photo upload
+- Return description JSON to frontend
+
+**#2: Trust Badge System** (P2)
+- Badge types: Email verified, Active seller, Trusted seller, Top seller tiers, Fast responder
+- Display in profile, offer cards, emails
+- Database: Add `badges` JSON field to users table
+- Gamifies engagement, reduces fraud perception
+
+**#3: Transparent Pricing** (P0)
+```
+Jake's Offer: $245
+How we calculated:
+  • Similar items sold: $220-$280 (avg $250)
+  • Condition adjustment: -5%
+  • Pawn margin: 15% below retail
+[View 5 Similar Sold Items →]
+```
+- Data sources: eBay sold listings API, Mercari/OfferUp, internal history
+- Agent 2 marketplace scraping (already planned Phase 4)
+- Cache sold comps in Redis for performance
+
+**#4: Mobile-First 4-Step Flow** (P1)
+```
+Step 1: Photos (upload 1-5, AI suggests angles)
+Step 2: Details (AI auto-filled, user confirms)
+Step 3: Contact (email/phone)
+Step 4: Review & Submit
+```
+- Large touch targets, progress indicator, swipe gestures
+- Titles truncate gracefully
+- Photo upload direct from camera
+
+**#5: Jake's Voice Consistency** (P2)
+- ✅ DO: "Howdy! Let's see what you've got there."
+- ❌ DON'T: "Yeehaw! Let's wrangle this doohickey!" (too cheesy)
+- Friendly, direct, knowledgeable (not goofy)
+- Agent 3 generates all copy — centralized voice control
+- A/B test tone variations
+
+### Implementation Roadmap
+
+**Week 1-2**: Transparent pricing with market comps (P0 — trust critical)
+**Week 2-3**: AI description auto-fill (P1 — 60% time savings)
+**Week 3-4**: 4-step mobile-first flow (P1 — reduces abandonment)
+**Week 4-5**: Trust badge system (P2 — 35-50% confidence boost)
+**Ongoing**: Jake's voice consistency (P2 — brand differentiation)
+
+**Total Timeline**: 5 weeks for full implementation
+
+### Success Metrics
+
+**Pre-Implementation Baseline** (to track):
+- Submission completion rate
+- Time from photo upload to submission
+- Offer acceptance rate
+- Mobile vs desktop traffic split
+- User feedback on Jake's tone
+
+**Post-Implementation Targets**:
+- +20-30% submission completion rate (AI auto-fill + 4-step flow)
+- -60% time to submit (AI auto-fill)
+- +15-25% offer acceptance rate (transparent pricing)
+- +35-50% user trust score (verification badges)
+
+### Research Sources
+
+All sources documented in research file with direct links:
+- [Depop AI Product Descriptions](https://www.retaildive.com/news/depop-generative-artificial-intelligence-product-descriptions-photo/727860/)
+- [Facebook Marketplace 2026](https://about.fb.com/news/2025/11/facebook-marketplace-gets-a-glow-up/)
+- [Vinted UX Flow](https://medium.com/@kmen/wireframing-the-vinted-app-selling-flow-3331d5156261)
+- [Trust Signals Guide](https://multivendorx.com/blog/earn-customer-trust-with-seller-verification/)
+- [Conversational AI Design 2026](https://botpress.com/blog/conversation-design)
+- 10+ additional sources (see research doc for full list)
+
+### Next Steps
+
+1. Review research doc with team
+2. Prioritize which improvements to implement first
+3. Create Beads issues for each improvement
+4. Assign implementation teams (if parallel development)
+5. Track metrics pre/post implementation
+
+**Session notes**: This entry
+**Research document**: `.claude/research/marketplace-ux-research-2026.md` (30 pages, 16 sources)
+
+---
+
 ## [2026-02-10] - CRITICAL DATA INTEGRITY FIX: Price Update Transactions
 
 **Status**: Completed
