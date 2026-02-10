@@ -67,18 +67,218 @@ Cross-reference with:
 
 Output: Verified product identifiers, improved confidence
 
-#### Stage 3: Condition Assessment
-**Map visual condition to multipliers**:
-- **New** (unopened, tags): 100%
-- **Like New** (no wear): 90-95%
-- **Good** (light wear): 75-85%
-- **Fair** (noticeable wear): 55-70%
-- **Poor** (heavy damage): 30-50%
+#### Stage 3: Condition Assessment (AI-POWERED DEFECT DETECTION)
 
-Combine:
+**CRITICAL CAPABILITY**: The vision AI MUST perform detailed condition grading with structured defect detection. This is a core differentiator for competitive pricing accuracy.
+
+**Condition Grading Scale**:
+- **Excellent** (95-100% multiplier): Like new, no visible defects, appears unused or barely used. Minimal to no cosmetic wear. Equivalent to "New" or "Like New" for resale.
+- **Good** (75-85% multiplier): Light wear appropriate for age. Minor cosmetic issues (small scratches, light scuffs) that don't affect function. Normal use signs but well-maintained.
+- **Fair** (55-70% multiplier): Noticeable wear and cosmetic damage. Multiple scratches, scuffs, or small dents. Fully functional but shows significant use. May have minor missing accessories.
+- **Poor** (30-50% multiplier): Heavy damage, major cosmetic issues, or questionable functionality. Deep scratches, dents, cracks, discoloration. Missing important parts or accessories.
+
+**Defect Detection Categories**:
+
+1. **Scratches**
+   - Surface scratches (minor): <5mm, barely visible, surface-level only
+   - Noticeable scratches (moderate): 5-15mm, clearly visible, cosmetic
+   - Deep scratches/gouges (severe): >15mm, into material, may affect function
+   - Location specificity required: "upper right corner of screen", "back panel center", etc.
+
+2. **Dents/Impact Damage**
+   - Minor dings: Small impact marks, corners slightly compressed
+   - Moderate dents: Visible deformation, bent edges
+   - Severe dents: Deep deformation, cracked housing from impact
+
+3. **Wear Patterns**
+   - Minor wear: Light rubbing on edges, barely noticeable fading
+   - Moderate wear: Visible wear areas, edges smoothed, some finish loss
+   - Severe wear: Heavy rubbing, significant finish loss, material degradation
+
+4. **Cracks**
+   - Hairline cracks: Barely visible, surface-level
+   - Moderate cracks: Clearly visible, through screen/housing
+   - Severe cracks: Shattered, spiderweb pattern, structural integrity compromised
+
+5. **Discoloration**
+   - Minor: Slight yellowing, minimal staining
+   - Moderate: Noticeable discoloration, visible stains
+   - Severe: Heavy yellowing, rust, oxidation, permanent staining
+
+6. **Missing Parts/Accessories**
+   - Minor: Missing non-essential accessories (stylus, manual)
+   - Moderate: Missing functional accessories (charging cable, case)
+   - Severe: Missing critical components (battery cover, buttons, ports)
+
+**Structured Output Format**:
+
+```json
+{
+  "condition_assessment": {
+    "grade": "Good",
+    "notes": "Item shows light wear consistent with normal use. Minor scratches on back panel but screen is pristine. All functions appear intact.",
+    "defects": [
+      {
+        "type": "scratch",
+        "severity": "minor",
+        "location": "back panel, upper left corner",
+        "description": "2-3mm surface scratch, barely visible under normal lighting"
+      },
+      {
+        "type": "wear",
+        "severity": "minor",
+        "location": "bottom edge near charging port",
+        "description": "Light wear from repeated charging cable insertion"
+      }
+    ],
+    "confidence": 88
+  }
+}
+```
+
+**Assessment Protocol**:
+
+1. **Systematic Photo Review**: Examine each photo for all defect categories
+2. **Defect Cataloging**: Record every visible defect with type, severity, location, description
+3. **Grade Determination**: Assign overall grade based on worst defects + defect count
+4. **Confidence Scoring**: Rate based on photo quality, angles, lighting
+5. **Notes Generation**: Explain reasoning in 1-2 sentences
+
+**Grading Decision Tree**:
+
+```
+IF no defects found AND pristine appearance
+  → GRADE: Excellent
+
+ELSE IF only minor defects (1-3 small scratches/light wear)
+  → GRADE: Good
+
+ELSE IF moderate defects OR many minor defects (4+)
+  → GRADE: Fair
+
+ELSE IF severe defects (cracks, heavy damage, missing parts)
+  → GRADE: Poor
+```
+
+**Category-Specific Considerations**:
+
+- **Electronics**: Focus on screen condition, housing integrity, port condition
+- **Jewelry**: Look for scratches on stones, band wear, clasp condition, discoloration
+- **Watches**: Check crystal clarity, case scratches, band wear, bezel damage
+- **Clothing**: Examine for stains, tears, pilling, fading, missing buttons
+- **Books**: Spine damage, page condition, cover wear, water damage
+- **Tools**: Rust, blade condition, handle integrity, mechanical function indicators
+
+**Confidence Scoring for Condition Assessment**:
+
+- **90-100**: Crystal clear photos from multiple angles, all areas visible, excellent lighting
+- **70-89**: Good photos, most areas visible, some angles missing or lighting suboptimal
+- **50-69**: Limited photos, some areas obscured, blurry or dark images
+- **<50**: Poor photo quality, item mostly obscured, cannot assess condition reliably
+
+**Integration with Pricing**:
+
+The `condition_assessment` object feeds directly into:
+1. **FMV Multiplier**: `services/pricing/offer.py` uses `condition_assessment.grade` + `defects.length`
+2. **Offer Adjustments**: Additional 5-10% penalty for severe defects
+3. **Jake Commentary**: Defect list informs Jake's voice script ("I see some wear on the back...")
+4. **User Transparency**: Defects displayed in offer UI for trust-building
+
+**Quality Standards**:
+
+- Defect detection accuracy: >90% (validated against in-person inspection)
+- False positive rate: <10% (don't hallucinate defects)
+- Grade consistency: ±1 grade level when compared to human appraisers
+- Confidence calibration: When confidence >80%, accuracy should be >85%
+
+**Example Assessments**:
+
+**Example 1: Excellent Condition iPhone**
+```json
+{
+  "grade": "Excellent",
+  "notes": "Appears like new with no visible defects. Screen is pristine, housing shows no wear. Likely kept in a case.",
+  "defects": [],
+  "confidence": 95
+}
+```
+
+**Example 2: Fair Condition Laptop**
+```json
+{
+  "grade": "Fair",
+  "notes": "Shows significant wear from regular use. Multiple cosmetic issues but appears functional.",
+  "defects": [
+    {
+      "type": "scratch",
+      "severity": "moderate",
+      "location": "lid top surface, center area",
+      "description": "10-12mm scratches in parallel pattern, likely from stacking"
+    },
+    {
+      "type": "dent",
+      "severity": "minor",
+      "location": "front right corner",
+      "description": "Small impact dent, approximately 3mm diameter"
+    },
+    {
+      "type": "wear",
+      "severity": "moderate",
+      "location": "palm rest area",
+      "description": "Shiny wear pattern from hand oils, finish partially worn away"
+    },
+    {
+      "type": "missing_parts",
+      "severity": "minor",
+      "location": "bottom panel",
+      "description": "One rubber foot missing"
+    }
+  ],
+  "confidence": 82
+}
+```
+
+**Example 3: Poor Condition Watch**
+```json
+{
+  "grade": "Poor",
+  "notes": "Heavy wear and damage throughout. Crystal is cracked, significant scratches on case. Questionable functionality.",
+  "defects": [
+    {
+      "type": "crack",
+      "severity": "severe",
+      "location": "watch crystal, upper right quadrant",
+      "description": "Crack across crystal face, approximately 15mm long"
+    },
+    {
+      "type": "scratch",
+      "severity": "severe",
+      "location": "case back, all around",
+      "description": "Deep scratches covering majority of back surface"
+    },
+    {
+      "type": "wear",
+      "severity": "severe",
+      "location": "band links",
+      "description": "Heavy oxidation and discoloration on metal band"
+    }
+  ],
+  "confidence": 90
+}
+```
+
+**Failure Modes & Recovery**:
+
+- **Insufficient Photos**: Note in `notes`, reduce `confidence`, request additional photos in response
+- **Unclear Defects**: Mark severity as estimate, note uncertainty in `description`
+- **Contradictory Signals**: Prioritize visual evidence over user description
+- **Photo Quality Issues**: Flag in `notes`, reduce confidence, may need human review
+
+**Combine with**:
 - Visual analysis (scratches, dents, dirt)
-- User description
+- User description (as corroboration only)
 - Category norms (e.g., books naturally show wear)
+- Historical data (if item previously assessed)
 
 ### 2. Marketplace Data Integration (`services/marketplace/`)
 

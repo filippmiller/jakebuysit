@@ -11,6 +11,22 @@ class IdentifyRequest(BaseModel):
     user_description: Optional[str] = Field(None, description="Optional user text hint")
 
 
+class Defect(BaseModel):
+    """Individual defect or condition issue."""
+    type: str = Field(..., description="Type of defect (e.g., 'scratch', 'dent', 'wear', 'crack', 'discoloration')")
+    severity: str = Field(..., description="Severity: 'minor', 'moderate', 'severe'")
+    location: str = Field(..., description="Location on item (e.g., 'front screen', 'back case', 'corner')")
+    description: Optional[str] = Field(None, description="Detailed description of the defect")
+
+
+class ConditionAssessment(BaseModel):
+    """Detailed condition assessment with grading."""
+    grade: str = Field(..., description="Overall condition grade: Excellent/Good/Fair/Poor")
+    notes: str = Field(..., description="Summary of condition assessment reasoning")
+    defects: List[Defect] = Field(default_factory=list, description="List of specific defects found")
+    confidence: int = Field(..., ge=0, le=100, description="Confidence in condition assessment")
+
+
 class ProductIdentifiers(BaseModel):
     """Product identifiers (UPC, model numbers, etc.)."""
     upc: Optional[str] = None
@@ -30,6 +46,7 @@ class IdentifyResponse(BaseModel):
     damage: List[str] = Field(default_factory=list, description="Damage or issues observed")
     confidence: int = Field(..., ge=0, le=100, description="Confidence score 0-100")
     identifiers: ProductIdentifiers = Field(default_factory=ProductIdentifiers)
+    condition_assessment: Optional[ConditionAssessment] = Field(None, description="Detailed condition assessment")
 
     class Config:
         json_schema_extra = {
