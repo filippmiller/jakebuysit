@@ -5,12 +5,22 @@
 ## 🤖 ДЛЯ АГЕНТОВ — ЧИТАЙ СНАЧАЛА ЭТО!
 
 ### ГДЕ ЖИВЕТ САЙТ
-- **VPS:** Hetzner Cloud
-- **Deploy Tool:** Coolify
+- **VPS IP:** 89.167.42.128 (Hetzner Cloud, Helsinki)
+- **VPS Specs:** CPX42 (8 vCPU, 16GB RAM, 320GB SSD)
+- **Coolify Panel:** http://89.167.42.128:8000
+- **SSH:** `ssh root@89.167.42.128` or `ssh deploy@89.167.42.128`
 - **GitHub:** https://github.com/filippmiller/jakebuysit
 - **Branch:** `master`
+- **Status:** ⚠️ NOT YET DEPLOYED (needs first-time Coolify setup)
 
-### КАК ЗАДЕПЛОИТЬ
+### VPS DATABASE (Already Available)
+```bash
+PostgreSQL 16: postgresql://admin:BQ02BmHGWr3PwWrUWAGCHGBQAcYgYet@host.docker.internal:5432/jakebuysit
+Redis 7: redis://:iuTxuGPRtSLVRfhQA794w9KaHpPEaO88@host.docker.internal:6379
+```
+**Note:** Database "jakebuysit" needs to be created first (see First-Time Setup below)
+
+### КАК ЗАДЕПЛОИТЬ (AFTER FIRST-TIME SETUP)
 ```bash
 # 1. Закоммить и запушить
 git commit -m "feat: описание изменений"
@@ -20,14 +30,33 @@ git push origin master
 #    ИЛИ нажми "Redeploy" в Coolify dashboard
 
 # 3. Если есть миграции БД:
-ssh root@<vps-ip>
-cd /opt/jakebuysit
-docker-compose exec backend npx tsx src/scripts/apply-all-migrations.ts
+ssh root@89.167.42.128
+docker exec <backend-container> npx tsx src/scripts/apply-all-migrations.ts
 
-# 4. Проверь deployment:
-docker-compose ps  # Все сервисы = Up
-curl http://localhost:8080/health  # {"status":"ok"}
-docker-compose logs --tail=50 backend  # Нет ошибок
+# 4. Проверь deployment в Coolify dashboard или:
+curl http://89.167.42.128:<app-port>/health  # {"status":"ok"}
+```
+
+### FIRST-TIME SETUP (Required!)
+```bash
+# 1. Create database
+ssh root@89.167.42.128
+docker exec -it postgres psql -U admin -d main
+CREATE DATABASE jakebuysit;
+\q
+
+# 2. Add app to Coolify:
+#    - Open http://89.167.42.128:8000
+#    - Go to "My first project" → production environment
+#    - Click "New Resource" → "Application"
+#    - Repository: https://github.com/filippmiller/jakebuysit.git
+#    - Branch: master
+#    - Build Pack: Dockerfile (recommended) or Nixpacks
+
+# 3. Set environment variables in Coolify (use VPS credentials above)
+#    Copy from .env.example and update with VPS values
+
+# 4. Click "Deploy"
 ```
 
 ### ❌ НИКОГДА

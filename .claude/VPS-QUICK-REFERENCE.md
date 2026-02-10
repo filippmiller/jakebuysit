@@ -2,19 +2,72 @@
 
 ## 🌐 ГДЕ ЖИВЕТ САЙТ
 
-**VPS:** Hetzner Cloud
-**Deploy Tool:** Coolify
-**GitHub:** https://github.com/filippmiller/jakebuysit
+**VPS Provider:** Hetzner Cloud (Helsinki, Finland)
+**VPS IP:** 89.167.42.128
+**Coolify Panel:** http://89.167.42.128:8000
+**Deploy Tool:** Coolify 4.0.0-beta.462
+**GitHub Repo:** https://github.com/filippmiller/jakebuysit
 **Branch:** master
+**Status:** ⚠️ NOT YET DEPLOYED (needs to be added to Coolify)
 
-**Сервисы:**
+**VPS Specs:**
+- Plan: CPX42 (8 vCPU AMD, 16 GB RAM, 320 GB SSD)
+- OS: Ubuntu 24.04 LTS
+- Cost: ~$22.59/mo
+
+**Сервисы (when deployed):**
 - Frontend (3000) + Admin (3001) + Backend (8080) + Python AI (8000) + Jake (3002) + PostgreSQL (5432) + Redis (6379)
+
+---
+
+## 🗄️ VPS DATABASE CREDENTIALS
+
+**PostgreSQL 16:**
+```
+Host: host.docker.internal (from Coolify containers)
+Port: 5432
+User: admin
+Password: BQ02BmHGWr3PwWrUWAGCHGBQAcYgYet
+Database: jakebuysit (create first: CREATE DATABASE jakebuysit;)
+Connection: postgresql://admin:BQ02BmHGWr3PwWrUWAGCHGBQAcYgYet@host.docker.internal:5432/jakebuysit
+```
+
+**Redis 7:**
+```
+Host: host.docker.internal
+Port: 6379
+Password: iuTxuGPRtSLVRfhQA794w9KaHpPEaO88
+Connection: redis://:iuTxuGPRtSLVRfhQA794w9KaHpPEaO88@host.docker.internal:6379
+```
+
+**Note:** Use `host.docker.internal` for apps running in Coolify containers to access host-level services.
 
 ---
 
 ## 🚀 КАК ЗАДЕПЛОИТЬ НА VPS
 
-### Вариант 1: Автодеплой (Рекомендуется)
+### FIRST TIME SETUP (Required!)
+1. **SSH to VPS:** `ssh root@89.167.42.128`
+2. **Create database:**
+   ```bash
+   docker exec -it postgres psql -U admin -d main
+   CREATE DATABASE jakebuysit;
+   \q
+   ```
+3. **Add app to Coolify:**
+   - Open http://89.167.42.128:8000
+   - Go to "My first project" → production environment
+   - Click "New Resource" → "Application"
+   - Repository: `https://github.com/filippmiller/jakebuysit.git`
+   - Branch: `master`
+   - Build Pack: Dockerfile (or Nixpacks)
+4. **Set environment variables in Coolify:**
+   - Copy all from `.env.example`
+   - Use VPS database credentials (see above)
+   - Set `NODE_ENV=production`
+5. **Deploy:** Click "Deploy" button
+
+### Вариант 1: Автодеплой (After Initial Setup)
 ```bash
 git commit -m "feat: описание изменений"
 git push origin master
@@ -36,18 +89,29 @@ curl http://localhost:8080/health  # Проверка Backend
 
 ## ✅ ПОСЛЕ ДЕПЛОЯ — ОБЯЗАТЕЛЬНО ПРОВЕРЬ
 
+**From VPS (SSH):**
 ```bash
-# 1. Все контейнеры работают
-docker-compose ps
+ssh root@89.167.42.128
 
-# 2. Health checks
-curl http://localhost:8080/health   # Backend → должен вернуть {"status":"ok"}
-curl http://localhost:8000/health   # Python AI
-curl http://localhost:3002/api/v1/health  # Jake Service
+# 1. Check Coolify containers
+docker ps | grep jakebuysit
 
-# 3. Логи без ошибок
-docker-compose logs --tail=50 backend
-docker-compose logs --tail=50 pricing-api
+# 2. Check logs in Coolify dashboard
+# OR: docker logs <container-name>
+
+# 3. Health checks (after finding app ports in Coolify)
+curl http://localhost:<backend-port>/health   # Backend → {"status":"ok"}
+curl http://localhost:<python-port>/health    # Python AI
+curl http://localhost:<jake-port>/api/v1/health  # Jake Service
+```
+
+**From Local Machine (Remote Testing):**
+```bash
+# Use Coolify-assigned URLs or direct IP:port
+curl http://89.167.42.128:<assigned-port>/health
+
+# Or use automated E2E tests (once app is live):
+# See .claude/testing/test-plan.md for full test suite
 ```
 
 ---
