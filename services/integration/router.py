@@ -22,6 +22,25 @@ class IdentifyRequest(BaseModel):
     user_description: Optional[str] = None
 
 
+class ProductMetadata(BaseModel):
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    variant: Optional[str] = None
+    storage: Optional[str] = None
+    color: Optional[str] = None
+    year: Optional[int] = None
+    generation: Optional[str] = None
+    condition_specifics: Optional[Dict] = None
+
+
+class SerialInfo(BaseModel):
+    serial_number: Optional[str] = None
+    confidence: Optional[int] = None
+    method: Optional[str] = None
+    location: Optional[str] = None
+    imei: Optional[str] = None
+
+
 class VisionResult(BaseModel):
     category: str
     subcategory: str
@@ -32,6 +51,11 @@ class VisionResult(BaseModel):
     damage: List[str]
     confidence: int
     identifiers: Dict[str, Optional[str]]
+    conditionGrade: Optional[str] = None
+    conditionNotes: Optional[str] = None
+    seoTitle: Optional[str] = None
+    productMetadata: Optional[ProductMetadata] = None
+    serialInfo: Optional[SerialInfo] = None
 
 
 class ResearchRequest(BaseModel):
@@ -104,6 +128,29 @@ async def identify_item(request: IdentifyRequest):
         )
 
         # Map to Agent 4's expected format
+        product_metadata = None
+        if result.product_metadata:
+            product_metadata = ProductMetadata(
+                brand=result.product_metadata.brand,
+                model=result.product_metadata.model,
+                variant=result.product_metadata.variant,
+                storage=result.product_metadata.storage,
+                color=result.product_metadata.color,
+                year=result.product_metadata.year,
+                generation=result.product_metadata.generation,
+                condition_specifics=result.product_metadata.condition_specifics
+            )
+
+        serial_info = None
+        if result.serial_info:
+            serial_info = SerialInfo(
+                serial_number=result.serial_info.serial_number,
+                confidence=result.serial_info.confidence,
+                method=result.serial_info.method,
+                location=result.serial_info.location,
+                imei=result.serial_info.imei
+            )
+
         return VisionResult(
             category=result.category,
             subcategory=result.subcategory,
@@ -116,7 +163,12 @@ async def identify_item(request: IdentifyRequest):
             identifiers={
                 "upc": result.identifiers.upc,
                 "model_number": result.identifiers.model_number
-            }
+            },
+            conditionGrade=result.condition_assessment.grade if result.condition_assessment else None,
+            conditionNotes=result.condition_assessment.notes if result.condition_assessment else None,
+            seoTitle=result.seo_title,
+            productMetadata=product_metadata,
+            serialInfo=serial_info
         )
 
     except Exception as e:

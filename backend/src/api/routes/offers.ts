@@ -436,6 +436,113 @@ export async function offerRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * GET /api/v1/offers/public
+   * Public endpoint for sitemap generation - returns all "ready" offers.
+   * Lightweight response with only essential fields for sitemap.
+   */
+  fastify.get('/public', async (_request, _reply) => {
+    const cached = await cache.get<any>('offers:public:sitemap');
+    if (cached) return cached;
+
+    const result = await db.query(
+      `SELECT id, created_at, updated_at
+       FROM offers
+       WHERE status = 'ready'
+       ORDER BY created_at DESC
+       LIMIT 10000`, // Sitemap limit
+    );
+
+    const response = result.rows;
+    await cache.set('offers:public:sitemap', response, 3600); // Cache for 1 hour
+    return response;
+  });
+
+  /**
+   * GET /api/v1/offers/search
+   * Search offers using full-text search and fuzzy matching.
+   * Returns matching offers with relevance scoring.
+   */
+  fastify.get('/search', async (request, reply) => {
+    const { q, limit: pageLimit = 20, offset: pageOffset = 0 } = request.query as any;
+
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      return reply.status(400).send({ error: 'Search query must be at least 2 characters' });
+    }
+
+    const searchTerm = q.trim();
+
+    try {
+      // Full-text search with trigram similarity scoring
+      const result = await db.query(
+        `SELECT
+          id,
+          item_brand,
+          item_model,
+          item_category,
+          item_subcategory,
+          item_condition,
+          offer_amount,
+          seo_title,
+          photos->0->>'thumbnail_url' AS thumbnail_url,
+          created_at,
+          -- Relevance scoring
+          ts_rank(
+            to_tsvector('english',
+              COALESCE(item_brand, '') || ' ' ||
+              COALESCE(item_model, '') || ' ' ||
+              COALESCE(item_category, '') || ' ' ||
+              COALESCE(item_subcategory, '') || ' ' ||
+              COALESCE(user_description, '')
+            ),
+            plainto_tsquery('english', $1)
+          ) +
+          GREATEST(
+            similarity(COALESCE(item_brand, ''), $1),
+            similarity(COALESCE(item_model, ''), $1)
+          ) AS relevance
+        FROM offers
+        WHERE status = 'ready'
+          AND (
+            to_tsvector('english',
+              COALESCE(item_brand, '') || ' ' ||
+              COALESCE(item_model, '') || ' ' ||
+              COALESCE(item_category, '') || ' ' ||
+              COALESCE(item_subcategory, '') || ' ' ||
+              COALESCE(user_description, '')
+            ) @@ plainto_tsquery('english', $1)
+            OR item_brand ILIKE $2
+            OR item_model ILIKE $2
+            OR item_category ILIKE $2
+          )
+        ORDER BY relevance DESC, created_at DESC
+        LIMIT $3 OFFSET $4`,
+        [searchTerm, `%${searchTerm}%`, pageLimit, pageOffset]
+      );
+
+      return {
+        results: result.rows.map((o: any) => ({
+          id: o.id,
+          itemBrand: o.item_brand,
+          itemModel: o.item_model,
+          itemCategory: o.item_category,
+          itemSubcategory: o.item_subcategory,
+          itemCondition: o.item_condition,
+          offerAmount: o.offer_amount ? parseFloat(o.offer_amount) : null,
+          seoTitle: o.seo_title,
+          thumbnailUrl: o.thumbnail_url,
+          relevance: parseFloat(o.relevance),
+          createdAt: o.created_at,
+        })),
+        total: result.rows.length,
+        query: searchTerm,
+      };
+    } catch (err: any) {
+      logger.error({ error: err.message, query: searchTerm }, 'Search failed');
+      return reply.status(500).send({ error: 'Search failed' });
+    }
+  });
+
+  /**
    * GET /api/v1/offers/insights
    * Get personalized market insights for sellers (public, no auth required).
    * Returns category-specific trends and optimal selling times.

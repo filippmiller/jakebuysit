@@ -39,6 +39,7 @@ interface OfferCardProps {
     jakeVoiceUrl: string;
     jakeScript: string;
     expiresAt: string;
+    estimatedProfit?: number; // Profit if sold at FMV
   };
   onAccept: () => void;
   onDecline: () => void;
@@ -181,6 +182,14 @@ export function OfferCard({
             {formatCurrency(offer.jakePrice)}
           </p>
           <p className="text-sm text-[#706557] mt-2">Cash, right now</p>
+          {offer.estimatedProfit !== undefined && offer.estimatedProfit > 0 && (
+            <div className="mt-4 pt-4 border-t border-amber-400/20">
+              <p className="text-xs text-[#706557] mb-1">Your potential profit if sold at market value</p>
+              <p className="text-2xl font-bold text-green-400">
+                +{formatCurrency(offer.estimatedProfit)}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Enhanced Confidence Indicator */}

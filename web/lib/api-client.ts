@@ -55,6 +55,7 @@ export interface OfferDetails {
   jakeScript: string;
   expiresAt: string;
   animationState: string;
+  seoTitle?: string;
 }
 
 export interface AcceptOfferRequest {
@@ -87,6 +88,38 @@ export interface DashboardData {
     status: string;
     createdAt: string;
   }>;
+}
+
+export interface ProfitSummary {
+  totalProfit: number;
+  totalSales: number;
+  avgProfitPerSale: number;
+  avgProfitMargin: number;
+  currentMonthProfit: number;
+  currentMonthSales: number;
+}
+
+export interface ProfitTrend {
+  period: string;
+  profit: number;
+  sales: number;
+  avgProfit: number;
+}
+
+export interface CategoryProfit {
+  category: string;
+  profit: number;
+  sales: number;
+  avgProfit: number;
+  profitMargin: number;
+}
+
+export interface ProfitProjection {
+  pendingOffers: number;
+  estimatedRevenue: number;
+  estimatedCosts: number;
+  estimatedProfit: number;
+  ifAllAcceptedProfit: number;
 }
 
 class APIClient {
@@ -251,6 +284,70 @@ class APIClient {
         trendPercentage: 0,
         optimalTime: '2-4 PM',
       };
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get profit summary for user
+   */
+  async getProfitSummary(userId: string): Promise<ProfitSummary> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/profits/summary?userId=${userId}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch profit summary");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get profit trends (weekly or monthly)
+   */
+  async getProfitTrends(
+    userId: string,
+    interval: 'week' | 'month' = 'week',
+    limit: number = 12
+  ): Promise<ProfitTrend[]> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/profits/trends?userId=${userId}&interval=${interval}&limit=${limit}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch profit trends");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get profit breakdown by category
+   */
+  async getProfitByCategory(userId: string): Promise<CategoryProfit[]> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/profits/by-category?userId=${userId}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch category profits");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get profit projections from pending offers
+   */
+  async getProfitProjections(userId: string): Promise<ProfitProjection> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/profits/projections?userId=${userId}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch profit projections");
     }
 
     return response.json();

@@ -2,12 +2,22 @@
 FastAPI router for vision service endpoints.
 """
 from fastapi import APIRouter, HTTPException
-from .models import IdentifyRequest, IdentifyResponse, VisionError
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from .models import IdentifyRequest, IdentifyResponse, VisionError, SerialNumberResult
 from .identify import vision_identifier
+from .ocr import serial_extractor
 import structlog
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+class OCRRequest(BaseModel):
+    """Request model for serial number extraction."""
+    photos: List[str] = Field(..., description="Photo URLs (prioritize images showing labels/serials)")
+    product_category: Optional[str] = Field(None, description="Product category hint")
+    brand: Optional[str] = Field(None, description="Brand hint for format-specific extraction")
 
 
 @router.post("/identify", response_model=IdentifyResponse)
@@ -83,11 +93,61 @@ async def identify_item(request: IdentifyRequest):
         )
 
 
+@router.post("/ocr/serial", response_model=SerialNumberResult)
+async def extract_serial_number(request: OCRRequest):
+    """
+    Extract serial number from product photos using OCR.
+
+    **Process:**
+    1. Uses Claude Vision API for OCR text extraction
+    2. Applies brand/category-specific pattern matching
+    3. Returns serial number with confidence score
+
+    **Common Serial Formats:**
+    - IMEI: 15 digits (phones/tablets)
+    - Apple Serial: 12 alphanumeric characters
+    - Samsung Serial: R + 14 characters
+    - General: 8-20 alphanumeric characters
+
+    **Tips for Best Results:**
+    - Include photos showing labels, stickers, or engraved serials
+    - Back of device, battery compartment, SIM tray
+    - Clear, well-lit photos
+    - Provide category/brand hints if available
+    """
+    try:
+        logger.info(
+            "ocr_serial_request",
+            photo_count=len(request.photos),
+            category=request.product_category,
+            brand=request.brand
+        )
+
+        result = await serial_extractor.extract_serial_number(
+            photo_urls=request.photos,
+            product_category=request.product_category,
+            brand=request.brand
+        )
+
+        if result.get("confidence", 0) < 50:
+            logger.warning("low_confidence_serial", confidence=result.get("confidence"))
+
+        return SerialNumberResult(**result)
+
+    except Exception as e:
+        logger.error("ocr_serial_failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to extract serial number. Please try with clearer photos."
+        )
+
+
 @router.get("/health")
 async def health_check():
     """Health check for vision service."""
     return {
         "service": "vision",
         "status": "operational",
-        "model": "claude-3-5-sonnet-20241022"
+        "model": "claude-3-5-sonnet-20241022",
+        "features": ["identification", "condition_assessment", "ocr_serial"]
     }

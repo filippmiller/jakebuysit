@@ -1,0 +1,12 @@
+# JakeBuysIt - Robots.txt
+# Allow all crawlers to index our public pages
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /api
+
+# Sitemap location
+Sitemap: https://jakebuysit.com/sitemap.xml

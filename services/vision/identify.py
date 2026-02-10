@@ -6,7 +6,16 @@ import anthropic
 import structlog
 from typing import List, Optional, Dict, Any
 from config.settings import settings
-from .models import IdentifyResponse, ProductIdentifiers, ConditionAssessment, Defect
+from .models import (
+    IdentifyResponse,
+    ProductIdentifiers,
+    ConditionAssessment,
+    Defect,
+    ProductMetadata,
+    SerialNumberResult
+)
+from .seo import seo_title_generator
+from .ocr import serial_extractor
 
 logger = structlog.get_logger()
 
@@ -85,6 +94,40 @@ class VisionIdentifier:
                 logger.warning("low_confidence", confidence=result.confidence)
                 # Could retry with different prompt here
 
+            # Generate SEO title
+            try:
+                seo_title = await seo_title_generator.generate_seo_title(
+                    brand=result.brand,
+                    model=result.model,
+                    category=result.category,
+                    condition=result.condition,
+                    features=result.features,
+                    subcategory=result.subcategory
+                )
+                result.seo_title = seo_title
+            except Exception as e:
+                logger.warning("seo_title_generation_failed", error=str(e))
+                # Continue without SEO title - it's not critical
+
+            # Extract serial number using OCR (async)
+            try:
+                serial_result = await serial_extractor.extract_serial_number(
+                    photo_urls=photo_urls,
+                    product_category=result.category,
+                    brand=result.brand
+                )
+
+                if serial_result and serial_result.get("serial_number"):
+                    result.serial_info = SerialNumberResult(**serial_result)
+                    logger.info(
+                        "serial_extracted",
+                        serial=serial_result["serial_number"],
+                        confidence=serial_result["confidence"]
+                    )
+            except Exception as e:
+                logger.warning("serial_extraction_failed", error=str(e))
+                # Continue without serial - it's optional
+
             return result
 
         except Exception as e:
@@ -122,6 +165,19 @@ Analyze the provided images carefully and provide a detailed assessment in the f
       }
     ],
     "confidence": 85
+  },
+  "product_metadata": {
+    "brand": "Brand name (Apple, Samsung, etc.)",
+    "model": "Full model name (iPhone 13 Pro, Galaxy S21 Ultra)",
+    "variant": "Variant/edition (Pro, Ultra, Plus, etc.)",
+    "storage": "Storage capacity (128GB, 256GB, 512GB, 1TB)",
+    "color": "Product color (Sierra Blue, Phantom Black, etc.)",
+    "year": 2021,
+    "generation": "Generation if applicable (2nd Gen, 3rd Gen)",
+    "condition_specifics": {
+      "battery_health": "85%" (for electronics with batteries),
+      "screen_condition": "pristine/good/scratched" (for devices with screens)
+    }
   }
 }
 
@@ -164,12 +220,29 @@ IDENTIFICATION CONFIDENCE (main confidence field):
 - 50-69: Can identify category and general type, but brand/model unclear
 - <50: Blurry photos, unrecognizable item, or insufficient information
 
+PRODUCT METADATA - CRITICAL FOR PRICING:
+Extract granular details for accurate market pricing:
+- **Brand**: Exact brand name (Apple, not "apple" or "APPLE")
+- **Model**: Full specific model (iPhone 13 Pro, not just "iPhone")
+- **Variant**: Pro/Ultra/Plus/Max/Standard (crucial for pricing)
+- **Storage**: 64GB/128GB/256GB/512GB/1TB (huge price differentiator)
+- **Color**: Exact color name (Sierra Blue, Graphite, Starlight)
+- **Year**: Release year if you can determine it
+- **Generation**: 2nd Gen, 3rd Gen, etc. if applicable
+- **Condition Specifics**: Battery health %, screen condition details
+
+EXAMPLES:
+- iPhone 14 Pro Max 512GB in Deep Purple (2022) - variant=Pro Max, storage=512GB, color=Deep Purple, year=2022
+- Samsung Galaxy S23 Ultra 256GB Phantom Black (2023) - variant=Ultra, storage=256GB, color=Phantom Black
+- AirPods Pro 2nd Generation - generation=2nd Gen
+
 IMPORTANT:
 - condition_assessment.defects should be EMPTY ARRAY if no defects found (Excellent condition)
 - Be thorough but accurate - don't invent defects that aren't visible
 - If photos are unclear in certain areas, note this in condition_assessment.notes
 - condition_assessment.grade may differ from the legacy "condition" field - be specific
 - Always explain your reasoning in condition_assessment.notes
+- **product_metadata is CRITICAL** - extract all granular details for accurate pricing
 
 Be honest about confidence. If you can't assess condition clearly due to photo quality, say so in notes and lower the confidence score."""
 
@@ -253,6 +326,21 @@ Be honest about confidence. If you can't assess condition clearly due to photo q
                 confidence=ca_data.get("confidence", 0)
             )
 
+        # Parse product metadata if present
+        product_metadata = None
+        if "product_metadata" in data and data["product_metadata"]:
+            pm_data = data["product_metadata"]
+            product_metadata = ProductMetadata(
+                brand=pm_data.get("brand"),
+                model=pm_data.get("model"),
+                variant=pm_data.get("variant"),
+                storage=pm_data.get("storage"),
+                color=pm_data.get("color"),
+                year=pm_data.get("year"),
+                generation=pm_data.get("generation"),
+                condition_specifics=pm_data.get("condition_specifics")
+            )
+
         # Convert to IdentifyResponse with validation
         return IdentifyResponse(
             category=data.get("category", "Unknown"),
@@ -264,7 +352,8 @@ Be honest about confidence. If you can't assess condition clearly due to photo q
             damage=data.get("damage", []),
             confidence=data.get("confidence", 0),
             identifiers=ProductIdentifiers(**data.get("identifiers", {})),
-            condition_assessment=condition_assessment
+            condition_assessment=condition_assessment,
+            product_metadata=product_metadata
         )
 
 

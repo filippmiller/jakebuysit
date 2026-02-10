@@ -12,6 +12,7 @@ import { addJob } from '../queue/workers.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
 import { fraudClient } from '../integrations/fraud-client.js';
+import { profitCalculator } from './profit-calculator.js';
 
 export type OfferStage = 'uploaded' | 'vision' | 'marketplace' | 'pricing' | 'fraud-check' | 'jake-voice' | 'ready' | 'escalated' | 'failed';
 
@@ -90,6 +91,25 @@ export const offerOrchestrator = {
     // New fields from Phase 1 enhancements
     conditionGrade?: string; // 'Excellent', 'Good', 'Fair', 'Poor'
     conditionNotes?: string; // Detailed defect descriptions
+    seoTitle?: string; // SEO-optimized title (Phase 4)
+    // Phase 4 Team 1: Enhanced metadata and serial
+    productMetadata?: {
+      brand?: string;
+      model?: string;
+      variant?: string;
+      storage?: string;
+      color?: string;
+      year?: number;
+      generation?: string;
+      condition_specifics?: Record<string, any>;
+    };
+    serialInfo?: {
+      serial_number?: string;
+      confidence?: number;
+      method?: string;
+      location?: string;
+      imei?: string;
+    };
   }): Promise<void> {
     // Update offer with vision data
     await db.update('offers', { id: offerId }, {
@@ -106,6 +126,11 @@ export const offerOrchestrator = {
       // Store condition assessment from vision AI
       condition_grade: visionResult.conditionGrade || null,
       condition_notes: visionResult.conditionNotes || null,
+      // Store SEO title if generated
+      seo_title: visionResult.seoTitle || null,
+      // Phase 4 Team 1: Serial number and granular metadata
+      serial_number: visionResult.serialInfo?.serial_number || null,
+      product_metadata: visionResult.productMetadata ? JSON.stringify(visionResult.productMetadata) : '{}',
     });
 
     // Check if confidence is too low — escalate
@@ -197,7 +222,12 @@ export const offerOrchestrator = {
       explanation: string;
     };
   }): Promise<void> {
-    // Update offer with pricing
+    // Calculate estimated profit for the seller
+    const estimatedShippingCost = 8.50; // Average USPS Priority cost
+    const estimatedPlatformFees = 0; // Can be adjusted if crossposting
+    const estimatedProfit = pricingResult.fmv - (pricingResult.offer_amount + estimatedShippingCost + estimatedPlatformFees);
+
+    // Update offer with pricing and profit estimation
     await db.update('offers', { id: offerId }, {
       fmv: pricingResult.fmv,
       fmv_confidence: pricingResult.fmv_confidence,
@@ -210,6 +240,10 @@ export const offerOrchestrator = {
       // PostgreSQL JSONB accepts JavaScript objects directly via pg driver
       comparable_sales: pricingResult.comparable_sales ? JSON.stringify(pricingResult.comparable_sales) : JSON.stringify([]),
       confidence_explanation: pricingResult.confidence_factors?.explanation || null,
+      // Profit estimation
+      estimated_profit: estimatedProfit,
+      estimated_shipping_cost: estimatedShippingCost,
+      estimated_platform_fees: estimatedPlatformFees,
     });
 
     // High value offers get escalated for human review
