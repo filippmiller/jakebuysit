@@ -41,68 +41,8 @@ interface BackendOfferResponse {
   processingStage?: string;
 }
 
-/**
- * Generate mock comparable sales for demo purposes
- * (Remove when backend provides real data)
- */
-function generateMockComparables(
-  itemName: string,
-  fmv: number,
-  condition: string
-): ComparableSale[] {
-  const sources = ["ebay", "facebook", "amazon"];
-  const conditions = ["Excellent", "Good", "Fair"];
-  const sales: ComparableSale[] = [];
-
-  for (let i = 0; i < 3; i++) {
-    const variance = 0.85 + Math.random() * 0.3; // ±15%
-    const daysAgo = Math.floor(Math.random() * 30);
-    const soldDate = new Date();
-    soldDate.setDate(soldDate.getDate() - daysAgo);
-
-    sales.push({
-      source: sources[i % sources.length],
-      title: `${itemName} - ${conditions[i % conditions.length]}`,
-      price: Math.round(fmv * variance * 100) / 100,
-      soldDate: soldDate.toISOString(),
-      condition: conditions[i % conditions.length],
-      url: `https://example.com/listing-${i}`,
-    });
-  }
-
-  return sales;
-}
-
-/**
- * Generate mock confidence factors for demo purposes
- * (Remove when backend provides real data)
- */
-function generateMockConfidenceFactors(
-  confidence: number,
-  comparablesCount: number
-): ConfidenceFactors {
-  const dataPoints = Math.max(10, comparablesCount * 5);
-  const recencyScore = confidence > 80 ? 95 : confidence > 50 ? 75 : 60;
-  const priceVariance = confidence > 80 ? "low" : confidence > 50 ? "medium" : "high";
-  const categoryCoverage = confidence > 80 ? "high" : confidence > 50 ? "medium" : "low";
-
-  let explanation = "";
-  if (confidence >= 80) {
-    explanation = `High confidence: ${dataPoints} recent sales, ${priceVariance} price variance, ${categoryCoverage} category coverage`;
-  } else if (confidence >= 50) {
-    explanation = `Moderate confidence: ${dataPoints} data points, ${priceVariance} price variance across recent sales`;
-  } else {
-    explanation = `Lower confidence: Limited data (${dataPoints} points), ${priceVariance} price variance, or rare item`;
-  }
-
-  return {
-    dataPoints,
-    recencyScore,
-    priceVariance,
-    categoryCoverage,
-    explanation,
-  };
-}
+// Mock data generation removed - backend must provide real data
+// If comparable sales or confidence factors are missing, we handle gracefully with undefined
 
 /**
  * Transform backend offer response to frontend OfferDetails format
@@ -119,7 +59,7 @@ export function adaptOfferData(backendOffer: BackendOfferResponse): OfferDetails
     max: Math.round(fmv * 1.2 * 100) / 100,
   };
 
-  // Extract comparable sales from marketData (or generate mock data)
+  // Extract comparable sales from marketData (backend must provide real data)
   let comparableSales: ComparableSale[] | undefined;
   let comparablesCount = 0;
 
@@ -128,34 +68,22 @@ export function adaptOfferData(backendOffer: BackendOfferResponse): OfferDetails
     comparablesCount = comparableSales?.length || 0;
   } else if (backendOffer.marketData?.ebay?.sold_count) {
     comparablesCount = backendOffer.marketData.ebay.sold_count;
-    // Generate mock comparable sales for demo
-    comparableSales = generateMockComparables(
-      item?.brand && item?.model
-        ? `${item.brand} ${item.model}`
-        : "Item",
-      fmv,
-      item?.condition || "Good"
-    );
+    // No comparable sales available - show empty state in UI
+    comparableSales = undefined;
   } else {
-    // Fallback: generate mock data
-    comparablesCount = 15;
-    comparableSales = generateMockComparables(
-      item?.brand && item?.model
-        ? `${item.brand} ${item.model}`
-        : "Item",
-      fmv,
-      item?.condition || "Good"
-    );
+    // No market data available
+    comparablesCount = 0;
+    comparableSales = undefined;
   }
 
-  // Extract or generate confidence factors
+  // Extract confidence factors from backend (no fallback generation)
   const aiConfidence = backendOffer.aiConfidence || 0.85;
   const fmvConfidence = pricing?.fmvConfidence || 0.85;
   const overallConfidence = Math.round((aiConfidence + fmvConfidence) / 2 * 100) / 100;
 
+  // Use real confidence factors from backend, or undefined if not available
   const confidenceFactors: ConfidenceFactors | undefined =
-    backendOffer.marketData?.confidence_factors ||
-    generateMockConfidenceFactors(overallConfidence * 100, comparablesCount);
+    backendOffer.marketData?.confidence_factors;
 
   return {
     id: backendOffer.id,

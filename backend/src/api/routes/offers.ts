@@ -54,14 +54,19 @@ export async function offerRoutes(fastify: FastifyInstance) {
   /**
    * GET /api/v1/offers/:id
    * Retrieve an offer by ID. Includes processing stage for real-time tracking.
-   * Public endpoint — the offer ID acts as a capability token.
+   * Uses optional auth to check ownership if user is logged in.
    */
-  fastify.get('/:id', async (request, reply) => {
+  fastify.get('/:id', { preHandler: optionalAuth }, async (request, reply) => {
     const { id } = validateParams(uuidParamSchema, request.params);
+    const userId = (request as any).userId || null;
 
     // Try cache first
     const cached = await cache.get<any>(cache.keys.offer(id));
     if (cached) {
+      // Ownership check: if user is logged in and offer has a user_id, verify match
+      if (userId && cached.user_id && cached.user_id !== userId) {
+        return reply.status(403).send({ error: 'You can only view your own offers, partner.' });
+      }
       const stage = await offerOrchestrator.getStage(id);
       return { ...cached, processingStage: stage?.stage || null };
     }
@@ -70,6 +75,11 @@ export async function offerRoutes(fastify: FastifyInstance) {
 
     if (!offer) {
       return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    // Ownership check: if user is logged in and offer has a user_id, verify match
+    if (userId && offer.user_id && offer.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only view your own offers, partner.' });
     }
 
     // Parse JSONB fields

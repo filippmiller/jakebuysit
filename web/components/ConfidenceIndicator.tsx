@@ -96,10 +96,19 @@ export function ConfidenceIndicator({
         className={`relative p-3 ${config.bgColor} border border-white/[0.08] rounded-lg`}
       >
         <button
-          className="absolute top-2 right-2"
+          type="button"
+          className="absolute top-2 right-2 focus:outline-none focus:ring-2 focus:ring-amber-500/50 rounded"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
           onClick={() => setShowTooltip(!showTooltip)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowTooltip(!showTooltip);
+            }
+          }}
+          aria-label="Toggle confidence details"
+          aria-expanded={showTooltip}
         >
           <HelpCircle className="w-4 h-4 text-[#706557] hover:text-[#a89d8a] transition-colors" />
         </button>
