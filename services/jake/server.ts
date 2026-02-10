@@ -5,7 +5,9 @@
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import websocket from '@fastify/websocket';
 import { registerAgent4Routes } from './api/agent4-integration.js';
+import { registerChatRoutes } from './api/chat-routes.js';
 
 const PORT = parseInt(process.env.JAKE_PORT || '3002', 10);
 const HOST = process.env.JAKE_HOST || 'localhost';
@@ -29,8 +31,14 @@ async function startServer() {
     origin: true,
   });
 
+  // WebSocket support for real-time chat
+  await fastify.register(websocket);
+
   // Register Agent 4 integration routes
   await registerAgent4Routes(fastify);
+
+  // Register WebSocket chat routes
+  await registerChatRoutes(fastify);
 
   // Start server
   try {

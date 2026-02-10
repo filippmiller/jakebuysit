@@ -1,5 +1,114 @@
 # Work Log - JakeBuysIt
 
+## [2026-02-10] - [Phase 2] Jake AI Chatbot with WebSocket Support (pawn-7vd)
+
+**Status**: Completed
+**Duration**: ~120 minutes
+**Beads Issue**: pawn-7vd (Team 1 - Phase 2)
+**Commits**: Pending
+
+### What was done
+- Implemented real-time conversational AI chatbot with Jake's western personality
+- Created WebSocket-based chat API at `/ws/chat/:offerId`
+- Built conversation engine using Claude 3.5 Sonnet API
+- Implemented context provider to fetch offer details from backend
+- Added animation state determination based on conversation tone
+- Created comprehensive test suite and documentation
+
+### Technical implementation
+**WebSocket Protocol:**
+- Bidirectional chat with greeting/message/error flow
+- In-memory conversation history (20 messages per offer)
+- Animation state sync: explaining, excited, sympathetic, confident, friendly
+- Ping/pong for connection health monitoring
+
+**Files created (5):**
+- `services/jake/chatbot/conversation.ts` - ConversationManager with Claude API integration
+- `services/jake/chatbot/context.ts` - ContextProvider for offer data
+- `services/jake/chatbot/chat-routes.ts` - WebSocket and REST endpoints
+- `services/jake/chatbot/README.md` - Comprehensive documentation
+- `services/jake/chatbot/test-chatbot.ts` - Test suite
+
+**Files modified (2):**
+- `services/jake/server.ts` - Added WebSocket registration
+- `package.json` - Added @fastify/websocket dependency
+
+### Decisions made
+- Used TypeScript (not Python) to match existing Jake service architecture
+- Claude 3.5 Sonnet for best quality/speed balance
+- In-memory history (sufficient for MVP, can add Redis later)
+- Deterministic animation state rules for predictable UX
+- 20-message history limit to prevent token overflow
+
+### Integration points
+**Consumes:**
+- Backend API: `GET /api/v1/offers/:offerId` for offer details
+- Anthropic Claude API for conversational responses
+
+**Provides:**
+- WebSocket endpoint: `ws://localhost:3002/ws/chat/:offerId`
+- REST endpoints: `/api/v1/chat/:offerId/available`, `/api/v1/chat/:offerId/history`
+
+### Next steps
+- Frontend team: Build chat UI component and WebSocket client
+- Backend team: Integrate chatbot availability into offer endpoint (pawn-po9)
+- Testing: Run test-chatbot.ts with real offer data
+- Monitoring: Track conversation metrics and Claude API costs
+
+**Session notes**: `.claude/sessions/2026-02-10-jake-chatbot-websocket.md`
+
+---
+
+## [2026-02-10] - [Phase 1] Backend Pricing Confidence & Comparable Sales (pawn-86x)
+
+**Status**: Completed
+**Duration**: ~90 minutes
+**Beads Issue**: pawn-86x
+**Commits**: Pending
+
+### What was done
+- Enhanced FMV calculation with 4-factor confidence scoring (data availability, recency, variance, category)
+- Added comparable sales extraction (3-5 items closest to FMV)
+- Implemented detailed confidence factors with human-readable explanations
+- Updated pricing models, offer engine, and integration layer
+- Created database migration for confidence_explanation field
+- Updated TypeScript interfaces to match Python API changes
+
+### Technical implementation
+**Confidence Formula:**
+```
+confidence = data_availability (0-40) + recency (0-25) + variance (0-20) + category (0-15)
+```
+
+**Files modified (8):**
+- `services/pricing/models.py` - Added ComparableSale model, updated FMVResponse
+- `services/pricing/fmv.py` - New confidence calculation logic, comparable sales extraction
+- `services/pricing/offer.py` - Pass through confidence data
+- `services/marketplace/aggregator.py` - Include raw listings in stats
+- `services/integration/router.py` - Updated PricingResult model, map comparables
+- `backend/src/integrations/agent2-client.ts` - Added TypeScript interfaces
+- `backend/src/services/offer-orchestrator.ts` - Updated onPricingComplete signature
+- `backend/src/db/migrations/001_add_confidence_explanation.sql` - New migration
+
+### Decisions made
+- 4-factor confidence formula balances data quality, recency, variance, and category familiarity
+- Extract top 5 comparables by price proximity for user transparency
+- Store explanation as TEXT for simplicity (JSONB would be over-engineered)
+- Pass listings through aggregator stats to avoid separate API call
+
+### Issues encountered
+None - Implementation aligned perfectly across Python and TypeScript layers
+
+### Next steps
+- Apply database migration: `psql $DATABASE_URL < backend/src/db/migrations/001_add_confidence_explanation.sql`
+- Test end-to-end with real eBay data
+- Frontend team can now consume pricing_confidence and comparable_sales from API
+- Monitor confidence score distribution in production
+
+**Session notes**: `.claude/sessions/2026-02-10-040502-pawn-86x-pricing-confidence.md`
+
+---
+
 ## [2026-02-10] - [Phase 1] Frontend UI Enhancements for Condition and Confidence Display
 
 **Status**: Completed (Frontend), Blocked (Backend Integration)
