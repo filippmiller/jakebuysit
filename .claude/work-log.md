@@ -1193,6 +1193,54 @@ condition_assessment = {
 
 ---
 
+## [2026-02-10] - Security: SQL Injection Fix
+
+**Status**: Completed (CRITICAL)
+**Duration**: ~15 minutes
+**Commits**: 2a9ca2cb
+
+### What was done
+- Fixed critical SQL injection vulnerability in `backend/src/services/profit-calculator.ts`
+- Attack vector: `interval` parameter was directly interpolated into SQL without validation
+- Applied whitelist validation pattern (VALID_INTERVALS const with explicit check)
+- Malicious inputs now throw error before reaching database
+
+### Technical details
+**Vulnerable code** (line 200):
+```typescript
+const truncFunction = interval === 'week' ? 'week' : 'month';
+// Directly interpolated: DATE_TRUNC('${truncFunction}', ...)
+```
+
+**Fixed code** (lines 200-206):
+```typescript
+const VALID_INTERVALS = ['week', 'month'] as const;
+if (!VALID_INTERVALS.includes(interval)) {
+  throw new Error(`Invalid interval: ${interval}. Must be one of: ${VALID_INTERVALS.join(', ')}`);
+}
+const truncFunction = interval; // Now safe after validation
+```
+
+### Defense-in-depth
+- API layer already has Fastify schema validation (`enum: ['week', 'month']`)
+- Service-level validation added because:
+  - Service can be called from non-API code paths
+  - Schema validation can be bypassed by misconfiguration
+  - Multiple security layers = best practice
+
+### Verification
+- Malicious input: `interval=week'); DROP TABLE sales; --` → throws error
+- Valid inputs: `'week'` and `'month'` → work normally
+- SQL query remains safe with validated input
+
+### Next steps
+- Consider auditing other services for similar injection vulnerabilities
+- Add automated security scanning to CI/CD pipeline
+
+**Session notes**: `.claude/sessions/2026-02-10-sql-injection-fix.md`
+
+---
+
 # Work Log - JakeBuysIt Frontend
 
 ## [2026-02-09] - Frontend Foundation (Agent 1)
