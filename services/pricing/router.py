@@ -10,10 +10,31 @@ from .models import (
 from .fmv import fmv_engine
 from .offer import offer_engine
 from .confidence import confidence_scorer
+from .optimizer import price_optimizer
+from typing import List, Dict, Any
+from pydantic import BaseModel
 import structlog
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+# Optimizer models
+class OptimizerOfferInput(BaseModel):
+    offer_id: str
+    current_price: float
+    original_offer: float
+    created_at: str
+    view_count: int
+    last_optimized: str | None = None
+
+
+class OptimizePricesRequest(BaseModel):
+    offers: List[OptimizerOfferInput]
+
+
+class OptimizePricesResponse(BaseModel):
+    results: Dict[str, Any]
 
 
 @router.post("/fmv", response_model=FMVResponse)
@@ -181,11 +202,51 @@ async def check_confidence(request: ConfidenceRequest):
         )
 
 
+@router.post("/optimize-prices", response_model=OptimizePricesResponse)
+async def optimize_prices(request: OptimizePricesRequest):
+    """
+    Batch analyze offers and recommend price optimizations.
+
+    **Time Decay Schedule:**
+    - 7-13 days + low engagement: -5%
+    - 14-29 days + low engagement: -10%
+    - 30+ days: -15%
+
+    **Velocity Detection:**
+    - High (>5 views/day): No change
+    - Medium (2-5 views/day): Monitor
+    - Low (<2 views/day): Apply decay
+
+    **Price Floor:**
+    - Never reduce below original offer + 20% margin
+    """
+    try:
+        logger.info(
+            "optimize_prices_request",
+            offer_count=len(request.offers)
+        )
+
+        # Convert to dict format expected by optimizer
+        offers_data = [offer.dict() for offer in request.offers]
+
+        # Run batch analysis
+        results = price_optimizer.batch_analyze(offers_data)
+
+        return OptimizePricesResponse(results=results)
+
+    except Exception as e:
+        logger.error("optimize_prices_error", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to optimize prices: {str(e)}"
+        )
+
+
 @router.get("/health")
 async def health_check():
     """Health check for pricing service."""
     return {
         "service": "pricing",
         "status": "operational",
-        "engines": ["fmv", "offer", "confidence"]
+        "engines": ["fmv", "offer", "confidence", "optimizer"]
     }

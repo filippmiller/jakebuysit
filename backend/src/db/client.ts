@@ -7,7 +7,7 @@ const { Pool } = pg;
 // Allowlist of valid table names to prevent SQL injection via table name interpolation
 const ALLOWED_TABLES = new Set([
   'users', 'offers', 'shipments', 'verifications', 'payouts',
-  'jake_bucks_transactions', 'fraud_checks', 'audit_log', 'config',
+  'jake_bucks_transactions', 'fraud_checks', 'audit_log', 'config', 'price_history',
 ]);
 
 function assertValidTable(table: string): void {

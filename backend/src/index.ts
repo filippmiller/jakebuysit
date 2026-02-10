@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { db } from './db/client.js';
 import { setupRedis, getRedis } from './db/redis.js';
 import { setupQueues, shutdown as shutdownQueues } from './queue/workers.js';
+import { setupScheduledJobs } from './queue/scheduler.js';
 import { authRoutes } from './api/routes/auth.js';
 import { offerRoutes } from './api/routes/offers.js';
 import { usersRoutes } from './api/routes/users.js';
@@ -17,6 +18,7 @@ import { adminRoutes } from './api/routes/admin.js';
 import { uploadRoutes } from './api/routes/uploads.js';
 import { offerStreamRoutes } from './api/routes/offer-stream.js';
 import { integrationRoutes } from './api/routes/integrations.js';
+import { profitRoutes } from './api/routes/profits.js';
 import { logger } from './utils/logger.js';
 
 const fastify = Fastify({
@@ -91,6 +93,7 @@ fastify.register(webhooksRoutes, { prefix: '/webhooks' });
 fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 fastify.register(uploadRoutes, { prefix: '/api/v1/uploads' });
 fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
+fastify.register(profitRoutes, { prefix: '/api/v1/profits' });
 
 // Error handler
 fastify.setErrorHandler((error: any, request, reply) => {
@@ -127,6 +130,10 @@ async function start() {
     // Initialize BullMQ workers
     await setupQueues();
     logger.info('Queue workers started');
+
+    // Initialize scheduled jobs (price optimizer, etc.)
+    await setupScheduledJobs();
+    logger.info('Scheduled jobs initialized');
 
     // Start server
     await fastify.listen({

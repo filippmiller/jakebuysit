@@ -1380,4 +1380,261 @@ export async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // ═══════════════════════════════════════════
+  // PRICE OPTIMIZER
+  // ═══════════════════════════════════════════
+
+  /**
+   * GET /api/v1/admin/pricing/history/:offerId
+   * Get price change history for an offer.
+   */
+  fastify.get('/pricing/history/:offerId', {
+    preHandler: requireAdmin,
+  }, async (request, reply) => {
+    const { offerId } = request.params as { offerId: string };
+
+    const history = await db.query(
+      `SELECT
+        id,
+        old_price,
+        new_price,
+        price_delta,
+        price_delta_percent,
+        reason,
+        trigger_type,
+        days_since_created,
+        view_count,
+        views_per_day,
+        changed_by,
+        notes,
+        created_at
+      FROM price_history
+      WHERE offer_id = $1
+      ORDER BY created_at DESC`,
+      [offerId]
+    );
+
+    return { history: history.rows };
+  });
+
+  /**
+   * POST /api/v1/admin/pricing/toggle-auto/:offerId
+   * Enable/disable auto-pricing for a specific offer.
+   */
+  fastify.post('/pricing/toggle-auto/:offerId', {
+    preHandler: requireAdmin,
+  }, async (request, reply) => {
+    const { offerId } = request.params as { offerId: string };
+    const { enabled } = request.body as { enabled: boolean };
+    const adminUser = (request as any).user;
+
+    const offer = await db.findOne('offers', { id: offerId });
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    const updated = await db.update(
+      'offers',
+      { id: offerId },
+      { auto_pricing_enabled: enabled }
+    );
+
+    await auditLog('offer', offerId, 'auto_pricing_toggled', adminUser.sub, {
+      auto_pricing_enabled: offer.auto_pricing_enabled,
+    }, {
+      auto_pricing_enabled: enabled,
+    });
+
+    logger.info({
+      offerId,
+      enabled,
+      adminId: adminUser.sub,
+    }, 'Auto-pricing toggled');
+
+    return { success: true, offer: updated };
+  });
+
+  /**
+   * POST /api/v1/admin/pricing/lock/:offerId
+   * Lock/unlock price (prevents all auto-pricing).
+   */
+  fastify.post('/pricing/lock/:offerId', {
+    preHandler: requireAdmin,
+  }, async (request, reply) => {
+    const { offerId } = request.params as { offerId: string };
+    const { locked } = request.body as { locked: boolean };
+    const adminUser = (request as any).user;
+
+    const offer = await db.findOne('offers', { id: offerId });
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    const updated = await db.update(
+      'offers',
+      { id: offerId },
+      { price_locked: locked }
+    );
+
+    await auditLog('offer', offerId, 'price_lock_toggled', adminUser.sub, {
+      price_locked: offer.price_locked,
+    }, {
+      price_locked: locked,
+    });
+
+    logger.info({
+      offerId,
+      locked,
+      adminId: adminUser.sub,
+    }, 'Price lock toggled');
+
+    return { success: true, offer: updated };
+  });
+
+  /**
+   * POST /api/v1/admin/pricing/manual-adjust/:offerId
+   * Manually adjust offer price.
+   */
+  fastify.post('/pricing/manual-adjust/:offerId', {
+    preHandler: requireAdmin,
+  }, async (request, reply) => {
+    const { offerId } = request.params as { offerId: string };
+    const { newPrice, reason } = request.body as { newPrice: number; reason: string };
+    const adminUser = (request as any).user;
+
+    const offer = await db.findOne('offers', { id: offerId });
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    if (newPrice <= 0) {
+      return reply.status(400).send({ error: 'Price must be greater than 0' });
+    }
+
+    const oldPrice = offer.offer_amount;
+
+    // Update offer price
+    const updated = await db.update(
+      'offers',
+      { id: offerId },
+      { offer_amount: newPrice, last_price_optimization: new Date() }
+    );
+
+    // Record in price history
+    await db.create('price_history', {
+      offer_id: offerId,
+      old_price: oldPrice,
+      new_price: newPrice,
+      reason: reason || 'admin_manual_adjustment',
+      trigger_type: 'manual',
+      changed_by: adminUser.sub,
+      notes: reason,
+    });
+
+    await auditLog('offer', offerId, 'price_manually_adjusted', adminUser.sub, {
+      offer_amount: oldPrice,
+    }, {
+      offer_amount: newPrice,
+    });
+
+    logger.info({
+      offerId,
+      oldPrice,
+      newPrice,
+      adminId: adminUser.sub,
+      reason,
+    }, 'Price manually adjusted');
+
+    return { success: true, offer: updated };
+  });
+
+  /**
+   * POST /api/v1/admin/pricing/trigger-optimizer
+   * Manually trigger price optimizer job (super-admin only).
+   */
+  fastify.post('/pricing/trigger-optimizer', {
+    preHandler: requireRole('super_admin'),
+  }, async (request, reply) => {
+    const { dryRun = false } = request.body as { dryRun?: boolean };
+    const adminUser = (request as any).user;
+
+    const { triggerPriceOptimizerNow } = await import('../../queue/scheduler.js');
+
+    const job = await triggerPriceOptimizerNow(dryRun);
+
+    await auditLog('system', 'price_optimizer', 'manual_trigger', adminUser.sub, null, {
+      dryRun,
+      jobId: job.id,
+    });
+
+    logger.info({
+      jobId: job.id,
+      dryRun,
+      adminId: adminUser.sub,
+    }, 'Price optimizer manually triggered');
+
+    return {
+      success: true,
+      jobId: job.id,
+      dryRun,
+      message: dryRun ? 'Dry run triggered - no changes will be applied' : 'Optimizer triggered',
+    };
+  });
+
+  /**
+   * GET /api/v1/admin/pricing/optimizer-stats
+   * Get price optimizer effectiveness stats.
+   */
+  fastify.get('/pricing/optimizer-stats', {
+    preHandler: requireAdmin,
+  }, async (_request, _reply) => {
+    const stats = await db.query(`
+      WITH recent_optimizations AS (
+        SELECT
+          COUNT(*) as total_adjustments,
+          SUM(price_delta) as total_reduction,
+          AVG(price_delta_percent) as avg_reduction_pct,
+          MIN(created_at) as first_optimization,
+          MAX(created_at) as last_optimization
+        FROM price_history
+        WHERE trigger_type = 'auto'
+          AND created_at >= NOW() - INTERVAL '30 days'
+      ),
+      velocity_breakdown AS (
+        SELECT
+          reason,
+          COUNT(*) as count,
+          AVG(price_delta_percent) as avg_reduction
+        FROM price_history
+        WHERE trigger_type = 'auto'
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY reason
+      )
+      SELECT
+        ro.total_adjustments,
+        ro.total_reduction,
+        ro.avg_reduction_pct,
+        ro.first_optimization,
+        ro.last_optimization,
+        json_agg(
+          json_build_object(
+            'reason', vb.reason,
+            'count', vb.count,
+            'avg_reduction', vb.avg_reduction
+          )
+        ) as breakdown
+      FROM recent_optimizations ro
+      CROSS JOIN velocity_breakdown vb
+      GROUP BY ro.total_adjustments, ro.total_reduction, ro.avg_reduction_pct,
+               ro.first_optimization, ro.last_optimization
+    `);
+
+    return stats.rows[0] || {
+      total_adjustments: 0,
+      total_reduction: 0,
+      avg_reduction_pct: 0,
+      breakdown: [],
+    };
+  });
+
 }

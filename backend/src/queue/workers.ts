@@ -6,6 +6,7 @@ import { processMarketplaceJob } from './jobs/marketplace.js';
 import { processPricingJob } from './jobs/pricing.js';
 import { processJakeVoiceJob } from './jobs/jake-voice.js';
 import { processNotificationJob } from './jobs/notifications.js';
+import { processPriceOptimizerJob } from './jobs/price-optimizer.js';
 
 // Queue configurations
 const queueConfigs = {
@@ -14,6 +15,7 @@ const queueConfigs = {
   'pricing-calculate': { concurrency: 50, priority: 1 },
   'jake-voice': { concurrency: 10, priority: 3 },
   'notifications': { concurrency: 100, priority: 4 },
+  'price-optimizer': { concurrency: 1, priority: 5 }, // Low priority, single instance
 };
 
 const queues: Record<string, Queue> = {};
@@ -46,6 +48,7 @@ export async function setupQueues() {
     'pricing-calculate': processPricingJob,
     'jake-voice': processJakeVoiceJob,
     'notifications': processNotificationJob,
+    'price-optimizer': processPriceOptimizerJob,
   };
 
   for (const [queueName, queueConfig] of Object.entries(queueConfigs)) {

@@ -18,6 +18,27 @@ export interface VisionResult {
   damage: string[];
   confidence: number;
   identifiers: { upc?: string; model_number?: string };
+  conditionGrade?: string;
+  conditionNotes?: string;
+  seoTitle?: string;
+  // Phase 4 Team 1: Enhanced metadata
+  productMetadata?: {
+    brand?: string;
+    model?: string;
+    variant?: string;
+    storage?: string;
+    color?: string;
+    year?: number;
+    generation?: string;
+    condition_specifics?: Record<string, any>;
+  };
+  serialInfo?: {
+    serial_number?: string;
+    confidence?: number;
+    method?: string;
+    location?: string;
+    imei?: string;
+  };
 }
 
 export interface MarketplaceResult {
@@ -128,6 +149,22 @@ export const agent2 = {
       marketplace_stats: marketplaceStats,
       category,
       condition,
+    });
+  },
+
+  /** Optimize prices for stale listings (batch analysis) */
+  async optimizePrices(
+    offers: Array<{
+      offer_id: string;
+      current_price: number;
+      original_offer: number;
+      created_at: string;
+      view_count: number;
+      last_optimized: string | null;
+    }>
+  ): Promise<Record<string, any>> {
+    return agent2Fetch<Record<string, any>>('/api/v1/optimize-prices', {
+      offers,
     });
   },
 };
