@@ -197,7 +197,13 @@ export const profitCalculator = {
       return cached;
     }
 
-    const truncFunction = interval === 'week' ? 'week' : 'month';
+    // Security: Whitelist validation to prevent SQL injection
+    const VALID_INTERVALS = ['week', 'month'] as const;
+    if (!VALID_INTERVALS.includes(interval)) {
+      throw new Error(`Invalid interval: ${interval}. Must be one of: ${VALID_INTERVALS.join(', ')}`);
+    }
+
+    const truncFunction = interval; // Now safe after validation
 
     const result = await db.query(
       `SELECT
