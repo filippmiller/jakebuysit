@@ -174,28 +174,31 @@ export async function processPriceOptimizerJob(
     totalReduction += reduction;
 
     if (!dryRun) {
-      // Apply price change
-      await db.update(
-        'offers',
-        { id: offer.id },
-        {
-          offer_amount: newPrice,
-          last_price_optimization: new Date(),
-        }
-      );
+      // Apply price change and record history atomically within transaction
+      await db.transaction(async (trx) => {
+        // Update offer price
+        await trx.update(
+          'offers',
+          { id: offer.id },
+          {
+            offer_amount: newPrice,
+            last_price_optimization: new Date(),
+          }
+        );
 
-      // Record in price history
-      await db.create('price_history', {
-        offer_id: offer.id,
-        old_price: oldPrice,
-        new_price: newPrice,
-        reason: rec.reason,
-        trigger_type: 'auto',
-        days_since_created: rec.days_active,
-        view_count: rec.view_count || 0,
-        views_per_day: rec.velocity || 0,
-        changed_by: null, // System automated
-        notes: `Auto-optimized: ${rec.reduction_percent.toFixed(1)}% reduction`,
+        // Record in price history
+        await trx.create('price_history', {
+          offer_id: offer.id,
+          old_price: oldPrice,
+          new_price: newPrice,
+          reason: rec.reason,
+          trigger_type: 'auto',
+          days_since_created: rec.days_active,
+          view_count: rec.view_count || 0,
+          views_per_day: rec.velocity || 0,
+          changed_by: null, // System automated
+          notes: `Auto-optimized: ${rec.reduction_percent.toFixed(1)}% reduction`,
+        });
       });
 
       adjusted++;

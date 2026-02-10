@@ -165,6 +165,156 @@ class Database {
 
     return result.rowCount || 0;
   }
+
+  /**
+   * Execute operations within a database transaction.
+   * Provides a transactional context with all CRUD operations.
+   * Automatically commits on success or rolls back on error.
+   *
+   * @param callback - Function that receives a transaction context
+   * @returns Result of the callback
+   * @throws Original error if transaction fails
+   */
+  async transaction<T>(callback: (trx: TransactionContext) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const trx: TransactionContext = {
+        query: async <T extends pg.QueryResultRow = any>(text: string, params?: any[]) => {
+          const start = Date.now();
+          try {
+            const result = await client.query<T>(text, params);
+            const duration = Date.now() - start;
+
+            if (duration > 1000) {
+              logger.warn({ text, duration }, 'Slow query in transaction');
+            }
+
+            return result;
+          } catch (error) {
+            logger.error({ text, params, error }, 'Query error in transaction');
+            throw error;
+          }
+        },
+
+        findOne: async <T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any>): Promise<T | null> => {
+          assertValidTable(table);
+          const keys = Object.keys(conditions);
+          assertValidColumns(keys);
+          const values = Object.values(conditions);
+          const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
+
+          const query = `SELECT * FROM ${table} WHERE ${whereClauses.join(' AND ')} LIMIT 1`;
+          const result = await client.query<T>(query, values);
+
+          return result.rows[0] || null;
+        },
+
+        findMany: async <T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any> = {}): Promise<T[]> => {
+          assertValidTable(table);
+          const keys = Object.keys(conditions);
+          assertValidColumns(keys);
+          const values = Object.values(conditions);
+
+          let query = `SELECT * FROM ${table}`;
+          if (keys.length > 0) {
+            const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
+          }
+
+          const result = await client.query<T>(query, values);
+          return result.rows;
+        },
+
+        create: async <T extends pg.QueryResultRow = any>(table: string, data: Record<string, any>): Promise<T> => {
+          assertValidTable(table);
+          const keys = Object.keys(data);
+          assertValidColumns(keys);
+          const values = Object.values(data);
+          const placeholders = keys.map((_, i) => `$${i + 1}`);
+
+          const query = `
+            INSERT INTO ${table} (${keys.join(', ')})
+            VALUES (${placeholders.join(', ')})
+            RETURNING *
+          `;
+
+          const result = await client.query<T>(query, values);
+          return result.rows[0];
+        },
+
+        update: async <T extends pg.QueryResultRow = any>(
+          table: string,
+          conditions: Record<string, any>,
+          data: Record<string, any>
+        ): Promise<T | null> => {
+          assertValidTable(table);
+          const dataKeys = Object.keys(data);
+          const condKeys = Object.keys(conditions);
+          assertValidColumns([...dataKeys, ...condKeys]);
+          const dataValues = Object.values(data);
+          const condValues = Object.values(conditions);
+
+          const setClauses = dataKeys.map((key, i) => `${key} = $${i + 1}`);
+          const whereClauses = condKeys.map((key, i) => `${key} = $${dataKeys.length + i + 1}`);
+
+          const query = `
+            UPDATE ${table}
+            SET ${setClauses.join(', ')}
+            WHERE ${whereClauses.join(' AND ')}
+            RETURNING *
+          `;
+
+          const result = await client.query<T>(query, [...dataValues, ...condValues]);
+          return result.rows[0] || null;
+        },
+
+        delete: async (table: string, conditions: Record<string, any>): Promise<number> => {
+          assertValidTable(table);
+          const keys = Object.keys(conditions);
+          assertValidColumns(keys);
+          const values = Object.values(conditions);
+          const whereClauses = keys.map((key, i) => `${key} = $${i + 1}`);
+
+          const query = `DELETE FROM ${table} WHERE ${whereClauses.join(' AND ')}`;
+          const result = await client.query(query, values);
+
+          return result.rowCount || 0;
+        },
+      };
+
+      const result = await callback(trx);
+      await client.query('COMMIT');
+      logger.debug('Transaction committed successfully');
+
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error({ error }, 'Transaction rolled back due to error');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+/**
+ * Transaction context with same CRUD interface as Database class.
+ * All operations execute within a single transaction.
+ */
+export interface TransactionContext {
+  query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>>;
+  findOne<T extends pg.QueryResultRow = any>(table: string, conditions: Record<string, any>): Promise<T | null>;
+  findMany<T extends pg.QueryResultRow = any>(table: string, conditions?: Record<string, any>): Promise<T[]>;
+  create<T extends pg.QueryResultRow = any>(table: string, data: Record<string, any>): Promise<T>;
+  update<T extends pg.QueryResultRow = any>(
+    table: string,
+    conditions: Record<string, any>,
+    data: Record<string, any>
+  ): Promise<T | null>;
+  delete(table: string, conditions: Record<string, any>): Promise<number>;
 }
 
 export const db = new Database();

@@ -283,6 +283,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
     if (!before) return reply.status(404).send({ error: 'Offer not found' });
 
     const data: Record<string, any> = {};
+    const isPriceChange = updates.offer_amount !== undefined && updates.offer_amount !== before.offer_amount;
+
     if (updates.offer_amount !== undefined) data.offer_amount = updates.offer_amount;
     if (updates.status) data.status = updates.status;
     if (updates.escalation_notes) data.escalation_notes = JSON.stringify(updates.escalation_notes);
@@ -290,11 +292,36 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
     if (Object.keys(data).length === 0) return reply.status(400).send({ error: 'No valid fields to update' });
 
-    const after = await db.update('offers', { id }, data);
+    // Use transaction for price changes to ensure price_history consistency
+    let after;
+    if (isPriceChange) {
+      after = await db.transaction(async (trx) => {
+        // Update offer
+        const updated = await trx.update('offers', { id }, data);
+        if (!updated) throw new Error('Offer update failed');
+
+        // Record price change in history
+        await trx.create('price_history', {
+          offer_id: id,
+          old_price: before.offer_amount,
+          new_price: updates.offer_amount,
+          reason: 'admin_adjustment',
+          trigger_type: 'manual',
+          changed_by: adminId,
+          notes: updates.escalation_notes ? `Admin notes: ${JSON.stringify(updates.escalation_notes)}` : 'Manual admin adjustment',
+          days_since_created: Math.floor((Date.now() - new Date(before.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+        });
+
+        return updated;
+      });
+    } else {
+      after = await db.update('offers', { id }, data);
+    }
+
     await cache.del(cache.keys.offer(id));
     await auditLog('offer', id, 'admin_update', adminId, before, after);
 
-    logger.info({ offerId: id, adminId, updates: data }, 'Admin updated offer');
+    logger.info({ offerId: id, adminId, updates: data, priceChange: isPriceChange }, 'Admin updated offer');
     return { offer: after };
   });
 
