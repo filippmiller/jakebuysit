@@ -67,26 +67,49 @@ export interface DashboardData {
 
 class APIClient {
   private baseUrl: string;
+  private defaultTimeout = 30000; // 30 seconds
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
 
   /**
+   * Fetch with automatic timeout via AbortController.
+   */
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit = {},
+    timeoutMs?: number
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs || this.defaultTimeout);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        throw new Error("Request timed out. Please try again.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
    * Upload photos to S3, then create an offer with the returned URLs.
    */
   async submitOffer(data: OfferSubmission): Promise<OfferResponse> {
-    // Step 1: Upload photos
+    // Step 1: Upload photos (60s timeout for large files)
     const formData = new FormData();
     data.photos.forEach((photo, index) => {
       formData.append(`photo_${index}`, photo);
     });
 
-    const uploadResponse = await fetch(`${this.baseUrl}/api/v1/uploads/photos`, {
-      method: "POST",
-      body: formData,
-      headers: this.getAuthHeaders(),
-    });
+    const uploadResponse = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/uploads/photos`,
+      { method: "POST", body: formData, headers: this.getAuthHeaders() },
+      60000
+    );
 
     if (!uploadResponse.ok) {
       const err = await uploadResponse.json().catch(() => ({ error: "Upload failed" }));
@@ -96,17 +119,14 @@ class APIClient {
     const { photoUrls } = await uploadResponse.json();
 
     // Step 2: Create offer with uploaded photo URLs
-    const offerResponse = await fetch(`${this.baseUrl}/api/v1/offers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...this.getAuthHeaders(),
-      },
-      body: JSON.stringify({
-        photoUrls,
-        userDescription: data.description,
-      }),
-    });
+    const offerResponse = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/offers`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...this.getAuthHeaders() },
+        body: JSON.stringify({ photoUrls, userDescription: data.description }),
+      }
+    );
 
     if (!offerResponse.ok) {
       const err = await offerResponse.json().catch(() => ({ error: "Offer creation failed" }));
@@ -129,7 +149,7 @@ class APIClient {
    * Get offer details
    */
   async getOffer(offerId: string): Promise<OfferDetails> {
-    const response = await fetch(`${this.baseUrl}/api/v1/offers/${offerId}`);
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/api/v1/offers/${offerId}`);
 
     if (!response.ok) {
       throw new Error("Failed to fetch offer");
@@ -145,7 +165,7 @@ class APIClient {
     offerId: string,
     data: AcceptOfferRequest
   ): Promise<{ shipmentId: string; labelUrl: string }> {
-    const response = await fetch(
+    const response = await this.fetchWithTimeout(
       `${this.baseUrl}/api/v1/offers/${offerId}/accept`,
       {
         method: "POST",
@@ -168,7 +188,7 @@ class APIClient {
    * Get user dashboard data
    */
   async getDashboard(userId: string): Promise<DashboardData> {
-    const response = await fetch(
+    const response = await this.fetchWithTimeout(
       `${this.baseUrl}/api/v1/users/${userId}/dashboard`
     );
 

@@ -50,16 +50,25 @@ class FMVEngine:
         ebay_mean = marketplace_stats.get("mean", 0)
         listing_count = marketplace_stats.get("count", 0)
 
-        # Calculate weighted FMV
-        # For now, using primarily eBay data
-        # TODO: Integrate Amazon and Google Shopping when APIs are set up
-        fmv = (
-            ebay_median * self.WEIGHTS["ebay_sold_median"] +
-            ebay_mean * self.WEIGHTS["ebay_sold_mean"]
-        ) / (self.WEIGHTS["ebay_sold_median"] + self.WEIGHTS["ebay_sold_mean"])
+        # Calculate weighted FMV using only available sources
+        # Weights are normalized to the available sources so they sum to 1.0
+        available_weights = {
+            "ebay_sold_median": self.WEIGHTS["ebay_sold_median"],
+            "ebay_sold_mean": self.WEIGHTS["ebay_sold_mean"],
+        }
+        available_values = {
+            "ebay_sold_median": ebay_median,
+            "ebay_sold_mean": ebay_mean,
+        }
+        # TODO: Add when APIs are ready:
+        # available_weights["amazon_used"] = self.WEIGHTS["amazon_used"]
+        # available_values["amazon_used"] = amazon_price
 
-        # Normalize by removing outlier weights when data missing
-        # In production, this would be properly weighted across all sources
+        weight_sum = sum(available_weights.values())
+        fmv = sum(
+            available_values[k] * (available_weights[k] / weight_sum)
+            for k in available_weights
+        )
 
         # Assess data quality
         data_quality = self._assess_data_quality(listing_count)

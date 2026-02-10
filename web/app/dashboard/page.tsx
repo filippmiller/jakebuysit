@@ -48,10 +48,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-saloon-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0d0a]">
         <div className="text-center">
-          <div className="animate-spin w-16 h-16 border-4 border-saloon-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-dusty-600">{jakeVoice.loading.default}</p>
+          <div className="animate-spin w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[#a89d8a]">{jakeVoice.loading.default}</p>
         </div>
       </div>
     );
@@ -59,12 +59,12 @@ export default function DashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-saloon-50 to-white p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <p className="text-red-600 mb-4">{error || "Failed to load dashboard"}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0d0a] p-4">
+        <div className="max-w-md w-full bg-white/[0.07] backdrop-blur-sm border border-white/[0.12] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] p-8 text-center">
+          <p className="text-red-400 mb-4">{error || "Failed to load dashboard"}</p>
           <button
             onClick={loadDashboard}
-            className="px-6 py-3 bg-saloon-500 hover:bg-saloon-600 text-white rounded-lg transition-colors"
+            className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-400 text-[#1a1510] font-semibold rounded-lg transition-all"
           >
             Try Again
           </button>
@@ -84,9 +84,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-saloon-50 to-white">
+    <main className="min-h-screen bg-[#0f0d0a] relative overflow-hidden">
+      {/* Ambient Glows */}
+      <div className="absolute top-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-amber-900/[0.06] blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] rounded-full bg-amber-800/[0.04] blur-[100px] pointer-events-none" />
+
+      <div className="relative z-10">
       {/* Header */}
-      <div className="bg-gradient-to-r from-saloon-500 to-saloon-600 text-white py-12 px-4">
+      <div className="bg-gradient-to-r from-amber-500/[0.15] to-amber-400/[0.05] border-b border-white/[0.08] py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             {/* Jake Greeting */}
@@ -94,16 +99,16 @@ export default function DashboardPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <h1 className="text-4xl font-bold mb-2">
+              <h1 className="text-4xl font-bold text-[#f5f0e8] mb-2">
                 {getGreeting()}
               </h1>
-              <p className="text-saloon-100 text-lg">
+              <p className="text-[#a89d8a] text-lg">
                 {data.user.name || "Partner"}
               </p>
               {data.user.vipStatus && (
                 <div className="flex items-center gap-2 mt-2">
-                  <Star className="w-5 h-5 text-yellow-300 fill-yellow-300" />
-                  <span className="text-sm">VIP Customer</span>
+                  <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                  <span className="text-sm text-amber-300">VIP Customer</span>
                 </div>
               )}
             </motion.div>
@@ -129,18 +134,18 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl shadow-xl p-6 text-center"
+            className="mb-8 bg-gradient-to-r from-amber-500/[0.15] to-amber-400/[0.08] border border-amber-400/20 rounded-2xl p-6 text-center"
           >
             <div className="flex items-center justify-center gap-3 mb-2">
-              <DollarSign className="w-8 h-8 text-yellow-900" />
-              <h2 className="text-3xl font-bold text-yellow-900">
+              <DollarSign className="w-8 h-8 text-amber-400" />
+              <h2 className="text-3xl font-bold text-[#f5f0e8]">
                 Jake Bucks Balance
               </h2>
             </div>
-            <p className="text-5xl font-bold text-yellow-900 mb-2">
+            <p className="text-5xl font-bold bg-gradient-to-r from-amber-400 to-amber-300 bg-clip-text text-transparent mb-2">
               {formatCurrency(data.user.jakeBucks)}
             </p>
-            <p className="text-yellow-800">
+            <p className="text-[#a89d8a]">
               Use on your next sale for a bonus!
             </p>
           </motion.div>
@@ -184,18 +189,18 @@ export default function DashboardPage() {
         >
           <Link
             href="/submit"
-            className="block bg-saloon-500 hover:bg-saloon-600 text-white rounded-2xl shadow-xl p-8 transition-all hover:scale-105"
+            className="block bg-gradient-to-r from-amber-500/[0.15] to-amber-400/[0.08] border border-amber-400/20 hover:border-amber-400/40 rounded-2xl p-8 transition-all hover:scale-[1.02]"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-bold mb-2">
-                  Got somethin' else to sell?
+                <h3 className="text-2xl font-bold text-[#f5f0e8] mb-2">
+                  Got somethin&apos; else to sell?
                 </h3>
-                <p className="text-saloon-100">
+                <p className="text-[#a89d8a]">
                   Show Jake what you got and get paid today
                 </p>
               </div>
-              <Camera className="w-16 h-16 opacity-80" />
+              <Camera className="w-16 h-16 text-amber-400/60" />
             </div>
           </Link>
         </motion.div>
@@ -203,8 +208,8 @@ export default function DashboardPage() {
         {/* Active Offers */}
         {data.activeOffers.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold text-dusty-800 mb-4 flex items-center gap-2">
-              <Clock className="w-6 h-6 text-saloon-600" />
+            <h2 className="text-2xl font-bold text-[#f5f0e8] mb-4 flex items-center gap-2">
+              <Clock className="w-6 h-6 text-amber-400" />
               Active Offers
             </h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -218,8 +223,8 @@ export default function DashboardPage() {
         {/* Shipments */}
         {data.shipments.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold text-dusty-800 mb-4 flex items-center gap-2">
-              <Truck className="w-6 h-6 text-saloon-600" />
+            <h2 className="text-2xl font-bold text-[#f5f0e8] mb-4 flex items-center gap-2">
+              <Truck className="w-6 h-6 text-amber-400" />
               Shipments
             </h2>
             <div className="space-y-4">
@@ -233,48 +238,48 @@ export default function DashboardPage() {
         {/* Payout History */}
         {data.payouts.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl font-bold text-dusty-800 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-saloon-600" />
+            <h2 className="text-2xl font-bold text-[#f5f0e8] mb-4 flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-amber-400" />
               Payout History
             </h2>
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white/[0.05] border border-white/[0.08] rounded-2xl overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-white/[0.04]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#706557] uppercase">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#706557] uppercase">
                       Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#706557] uppercase">
                       Method
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[#706557] uppercase">
                       Status
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-white/[0.06]">
                   {data.payouts.map((payout) => (
-                    <tr key={payout.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                    <tr key={payout.id} className="hover:bg-white/[0.04]">
+                      <td className="px-6 py-4 text-sm text-[#c3bbad]">
                         {new Date(payout.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      <td className="px-6 py-4 text-sm font-semibold text-[#f5f0e8]">
                         {formatCurrency(payout.amount)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-[#a89d8a]">
                         {payout.method}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
                             payout.status === "completed"
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-500/[0.15] text-green-400 border border-green-500/20"
                               : payout.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
+                              ? "bg-amber-500/[0.15] text-amber-400 border border-amber-500/20"
+                              : "bg-white/[0.08] text-[#a89d8a] border border-white/[0.1]"
                           }`}
                         >
                           {payout.status}
@@ -298,21 +303,22 @@ export default function DashboardPage() {
               className="text-center py-16"
             >
               <div className="text-6xl mb-4">🤠</div>
-              <h3 className="text-2xl font-bold text-dusty-800 mb-2">
+              <h3 className="text-2xl font-bold text-[#f5f0e8] mb-2">
                 Ready to get started?
               </h3>
-              <p className="text-dusty-600 mb-6">
+              <p className="text-[#a89d8a] mb-6">
                 Show Jake what you got and get paid today!
               </p>
               <Link
                 href="/submit"
-                className="inline-block px-8 py-4 bg-saloon-500 hover:bg-saloon-600 text-white font-semibold rounded-lg transition-colors"
+                className="inline-block px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 text-[#1a1510] font-semibold rounded-lg transition-all"
               >
                 <Camera className="w-5 h-5 inline mr-2" />
                 Sell Your First Item
               </Link>
             </motion.div>
           )}
+      </div>
       </div>
     </main>
   );
@@ -331,23 +337,23 @@ function StatCard({
   color: "blue" | "orange" | "green" | "purple";
 }) {
   const colors = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    orange: "bg-orange-50 text-orange-600 border-orange-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
+    blue: "bg-blue-500/[0.1] text-blue-400 border-blue-500/20",
+    orange: "bg-orange-500/[0.1] text-orange-400 border-orange-500/20",
+    green: "bg-green-500/[0.1] text-green-400 border-green-500/20",
+    purple: "bg-purple-500/[0.1] text-purple-400 border-purple-500/20",
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`${colors[color]} border-2 rounded-xl p-4`}
+      className={`${colors[color]} border rounded-xl p-4`}
     >
       <div className="flex items-center gap-3 mb-2">
         {icon}
         <span className="text-sm font-medium">{label}</span>
       </div>
-      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-3xl font-bold text-[#f5f0e8]">{value}</p>
     </motion.div>
   );
 }
@@ -365,20 +371,20 @@ function OfferCard({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+      className="bg-white/[0.07] backdrop-blur-sm border border-white/[0.12] rounded-xl p-6 hover:border-white/[0.2] transition-colors"
     >
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="font-bold text-lg text-dusty-800">{offer.itemName}</h3>
+          <h3 className="font-bold text-lg text-[#f5f0e8]">{offer.itemName}</h3>
           {offer.brand && (
-            <p className="text-sm text-dusty-600">{offer.brand}</p>
+            <p className="text-sm text-[#a89d8a]">{offer.brand}</p>
           )}
         </div>
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${
             isExpired
-              ? "bg-red-100 text-red-800"
-              : "bg-green-100 text-green-800"
+              ? "bg-red-500/[0.15] text-red-400 border border-red-500/20"
+              : "bg-green-500/[0.15] text-green-400 border border-green-500/20"
           }`}
         >
           {isExpired ? "Expired" : "Active"}
@@ -386,20 +392,20 @@ function OfferCard({
       </div>
 
       <div className="mb-4">
-        <p className="text-sm text-dusty-600 mb-1">Jake's Offer</p>
-        <p className="text-3xl font-bold text-saloon-600">
+        <p className="text-sm text-[#a89d8a] mb-1">Jake&apos;s Offer</p>
+        <p className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-300 bg-clip-text text-transparent">
           {formatCurrency(offer.jakePrice)}
         </p>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-dusty-600 mb-4">
+      <div className="flex items-center gap-2 text-sm text-[#a89d8a] mb-4">
         <Clock className="w-4 h-4" />
         <span>{formatTimeRemaining(expiresAt)}</span>
       </div>
 
       <Link
         href={`/offers/${offer.id}`}
-        className="block w-full py-3 bg-saloon-500 hover:bg-saloon-600 text-white text-center font-semibold rounded-lg transition-colors"
+        className="block w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 text-[#1a1510] text-center font-semibold rounded-lg transition-all"
       >
         View Offer
       </Link>
@@ -437,23 +443,23 @@ function ShipmentCard({
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+      className="bg-white/[0.07] backdrop-blur-sm border border-white/[0.12] rounded-xl p-6 hover:border-white/[0.2] transition-colors"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {getStatusIcon()}
           <div>
-            <p className="font-semibold text-dusty-800">
+            <p className="font-semibold text-[#f5f0e8]">
               Tracking: {shipment.trackingNumber}
             </p>
-            <p className="text-sm text-dusty-600">{getStatusText()}</p>
+            <p className="text-sm text-[#a89d8a]">{getStatusText()}</p>
           </div>
         </div>
         <a
           href={shipment.labelUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-dusty-700 rounded-lg transition-colors text-sm font-medium"
+          className="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] text-[#c3bbad] rounded-lg transition-colors text-sm font-medium"
         >
           View Label
         </a>

@@ -67,11 +67,33 @@ export const cache = {
   // Atomic float increment with TTL (for spending limits, counters, etc.)
   async incrByFloatWithExpiry(key: string, amount: number, ttlSeconds: number): Promise<number> {
     const result = await redisClient.incrByFloat(key, amount);
+    const numResult = typeof result === 'string' ? parseFloat(result) : result;
     // Set TTL only on first write (when result equals the amount we just added)
-    if (result === amount) {
+    if (Math.abs(numResult - amount) < 0.001) {
       await redisClient.expire(key, ttlSeconds);
     }
-    return result;
+    return numResult;
+  },
+
+  // Atomic check-and-increment for spending limits (prevents race conditions)
+  async atomicIncrIfUnder(key: string, amount: number, limit: number, ttlSeconds: number): Promise<{ allowed: boolean; newTotal: number }> {
+    const lua = `
+      local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+      local amount = tonumber(ARGV[1])
+      local limit = tonumber(ARGV[2])
+      local ttl = tonumber(ARGV[3])
+      if current + amount > limit then
+        return {0, current}
+      end
+      local newTotal = redis.call('INCRBYFLOAT', KEYS[1], amount)
+      if current == 0 then
+        redis.call('EXPIRE', KEYS[1], ttl)
+      end
+      return {1, newTotal}
+    `;
+    const result = await redisClient.eval(lua, { keys: [key], arguments: [String(amount), String(limit), String(ttlSeconds)] }) as any;
+    const arr = Array.isArray(result) ? result : [0, 0];
+    return { allowed: Number(arr[0]) === 1, newTotal: Number(arr[1]) };
   },
 
   // Pattern helpers

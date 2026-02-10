@@ -67,6 +67,9 @@ class OfferEngine:
             category=category
         )
 
+        # Normalize condition to title case (e.g. "good" → "Good", "like new" → "Like New")
+        condition = condition.strip().title() if condition else "Unknown"
+
         # Get multipliers
         condition_mult = self.CONDITION_MULTIPLIERS.get(condition, 0.50)
         category_margin = self.CATEGORY_MARGINS.get(category, 0.50)

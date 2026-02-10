@@ -99,19 +99,19 @@ class EBayClient:
 
         # Filter for sold items
         filters.append("buyingOptions:{FIXED_PRICE}")
-        filters.append("conditions:{USED_EXCELLENT|USED_GOOD|USED_VERY_GOOD}")
 
-        # Condition filter
-        if condition:
-            condition_map = {
-                "New": "NEW",
-                "Like New": "USED_EXCELLENT",
-                "Good": "USED_GOOD|USED_VERY_GOOD",
-                "Fair": "USED_ACCEPTABLE",
-                "Poor": "FOR_PARTS_OR_NOT_WORKING"
-            }
-            if condition in condition_map:
-                filters.append(f"conditions:{{{condition_map[condition]}}}")
+        # Condition filter — use specific condition if provided, otherwise broad default
+        condition_map = {
+            "New": "NEW",
+            "Like New": "USED_EXCELLENT",
+            "Good": "USED_GOOD|USED_VERY_GOOD",
+            "Fair": "USED_ACCEPTABLE",
+            "Poor": "FOR_PARTS_OR_NOT_WORKING"
+        }
+        if condition and condition in condition_map:
+            filters.append(f"conditions:{{{condition_map[condition]}}}")
+        else:
+            filters.append("conditions:{USED_EXCELLENT|USED_GOOD|USED_VERY_GOOD}")
 
         # Date filter (sold within last N days)
         cutoff_date = datetime.now() - timedelta(days=sold_within_days)

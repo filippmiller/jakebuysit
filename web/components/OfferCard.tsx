@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Clock, TrendingUp, Package, ChevronRight } from "lucide-react";
 import { JakeVoice } from "./JakeVoice";
 import { JakeCharacter } from "./JakeCharacter";
@@ -38,6 +38,9 @@ export function OfferCard({
 }: OfferCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
   const expiresAt = new Date(offer.expiresAt);
   const jakeState = getJakeStateForOffer(
     offer.jakePrice,
@@ -45,10 +48,41 @@ export function OfferCard({
     offer.confidence
   );
 
+  // Live countdown timer
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const diff = expiresAt.getTime() - now.getTime();
+      if (diff <= 0) {
+        setTimeRemaining("Expired");
+        setIsUrgent(true);
+        return;
+      }
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      if (hours > 0) {
+        setTimeRemaining(`${hours}h ${minutes}m remaining`);
+      } else if (minutes > 0) {
+        setTimeRemaining(`${minutes}m ${seconds}s remaining`);
+      } else {
+        setTimeRemaining(`${seconds}s remaining`);
+      }
+      setIsUrgent(diff < 3600000); // urgent when < 1 hour
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [offer.expiresAt]);
+
   const handleAccept = useCallback(() => {
+    if (prefersReducedMotion) {
+      onAccept();
+      return;
+    }
     setShowConfetti(true);
     setTimeout(() => onAccept(), 800);
-  }, [onAccept]);
+  }, [onAccept, prefersReducedMotion]);
 
   return (
     <motion.div
@@ -192,10 +226,12 @@ export function OfferCard({
           </motion.div>
         )}
 
-        {/* Expiry Timer */}
-        <div className="flex items-center justify-center gap-2 text-sm text-[#a89d8a] mb-6">
-          <Clock className="w-4 h-4" />
-          <span>{formatTimeRemaining(expiresAt)}</span>
+        {/* Expiry Timer (live countdown) */}
+        <div className={`flex items-center justify-center gap-2 text-sm mb-6 ${
+          isUrgent ? "text-red-400" : "text-[#a89d8a]"
+        }`}>
+          <Clock className={`w-4 h-4 ${isUrgent ? "animate-pulse" : ""}`} />
+          <span>{timeRemaining}</span>
         </div>
 
         {/* Jake Voice Message */}

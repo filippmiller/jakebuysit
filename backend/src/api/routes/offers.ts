@@ -27,7 +27,6 @@ export async function offerRoutes(fastify: FastifyInstance) {
     const { photoUrls, userDescription } = validateBody(createOfferSchema, request.body);
 
     // Rate limit: max offers per hour (by user or by IP for anonymous)
-    const rateIdentifier = userId || request.ip;
     const rateKey = userId
       ? cache.keys.rateLimitUser(userId, 'offers-hour')
       : cache.keys.rateLimitIP(request.ip, 'offers-hour');

@@ -136,9 +136,9 @@ class MarketplaceAggregator:
         30-60 days: weight 0.8
         60-90 days: weight 0.5
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        now = datetime.now(tz=None)
+        now = datetime.now(tz=timezone.utc)
         weights = []
 
         for listing in listings:

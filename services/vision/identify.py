@@ -134,6 +134,36 @@ Be honest about confidence. If you can't identify the item clearly, say so."""
 
         return base_prompt
 
+    @staticmethod
+    def _extract_first_json_object(text: str) -> str | None:
+        """Extract the first balanced JSON object from text by tracking brace depth."""
+        start = text.find('{')
+        if start == -1:
+            return None
+        depth = 0
+        in_string = False
+        escape_next = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == '\\' and in_string:
+                escape_next = True
+                continue
+            if ch == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        return None
+
     def _parse_vision_response(self, response_text: str) -> IdentifyResponse:
         """
         Parse Claude's response into structured IdentifyResponse.
@@ -149,11 +179,9 @@ Be honest about confidence. If you can't identify the item clearly, say so."""
         if json_match:
             json_text = json_match.group(1)
         else:
-            # Try to find raw JSON
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                json_text = json_match.group(0)
-            else:
+            # Extract the first balanced JSON object by counting braces
+            json_text = self._extract_first_json_object(response_text)
+            if not json_text:
                 raise ValueError("Could not extract JSON from vision response")
 
         # Parse JSON

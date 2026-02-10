@@ -191,14 +191,12 @@ export const offerOrchestrator = {
       return;
     }
 
-    // Check daily spending limit (atomic increment to prevent race conditions)
+    // Check daily spending limit (atomic Lua script prevents race conditions)
     const dailyLimit = config.businessRules.maxOfferAmount * 10;
     const todayKey = `spending:daily:${new Date().toISOString().slice(0, 10)}`;
-    const newTotal = await cache.incrByFloatWithExpiry(todayKey, pricingResult.offer_amount, 86400);
-    if (newTotal > dailyLimit) {
-      // Roll back the increment since we're rejecting this offer
-      await cache.incrByFloatWithExpiry(todayKey, -pricingResult.offer_amount, 86400);
-      await this.escalate(offerId, 'daily_limit', `Daily spending limit would be exceeded ($${newTotal - pricingResult.offer_amount} + $${pricingResult.offer_amount} > $${dailyLimit})`);
+    const { allowed, newTotal } = await cache.atomicIncrIfUnder(todayKey, pricingResult.offer_amount, dailyLimit, 86400);
+    if (!allowed) {
+      await this.escalate(offerId, 'daily_limit', `Daily spending limit would be exceeded ($${newTotal} + $${pricingResult.offer_amount} > $${dailyLimit})`);
       return;
     }
 
