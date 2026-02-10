@@ -16,6 +16,7 @@ import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { logger } from '../../utils/logger.js';
 import { createOfferSchema, declineOfferSchema, listOffersQuerySchema, uuidParamSchema, validateBody, validateParams, validateQuery } from '../schemas.js';
 import { recommendations } from '../../integrations/recommendations-client.js';
+import { comparablePricingService } from '../../services/comparable-pricing.js';
 
 export async function offerRoutes(fastify: FastifyInstance) {
 
@@ -165,6 +166,13 @@ export async function offerRoutes(fastify: FastifyInstance) {
       expiresAt: offer.expires_at,
       createdAt: offer.created_at,
       acceptedAt: offer.accepted_at,
+      // Phase 2: 30-day price lock info
+      expiration: offer.expires_at ? {
+        expiresAt: offer.expires_at,
+        isExpired: new Date(offer.expires_at) < new Date(),
+        daysRemaining: Math.max(0, Math.ceil((new Date(offer.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+        hoursRemaining: Math.max(0, Math.ceil((new Date(offer.expires_at).getTime() - Date.now()) / (1000 * 60 * 60))),
+      } : null,
     };
 
     // Cache for 2 minutes (short TTL since status changes)
@@ -390,6 +398,120 @@ export async function offerRoutes(fastify: FastifyInstance) {
         acceptedAt: o.accepted_at,
       })),
       total,
+    };
+  });
+
+  /**
+   * GET /api/v1/offers/:id/comparables
+   * Get market comparable sales for an offer.
+   * Phase 2, Task 1: Market Comparable Pricing API
+   */
+  fastify.get('/:id/comparables', { preHandler: optionalAuth }, async (request, reply) => {
+    const { id } = validateParams(uuidParamSchema, request.params);
+    const userId = (request as any).userId || null;
+
+    const offer = await db.findOne('offers', { id });
+
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    // Ownership check if user is logged in
+    if (userId && offer.user_id && offer.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only view your own offer details, partner.' });
+    }
+
+    // Check if offer has identification data
+    if (!offer.item_brand || !offer.item_model) {
+      return reply.status(400).send({
+        error: 'Item not identified yet',
+        message: "Hold on, partner — Jake's still identifying this item.",
+        status: offer.status,
+      });
+    }
+
+    // Fetch comparables
+    const result = await comparablePricingService.findComparables(
+      offer.item_category || 'Unknown',
+      offer.item_brand,
+      offer.item_model,
+      offer.item_condition || 'Unknown',
+    );
+
+    return {
+      offerId: id,
+      userOffer: offer.offer_amount ? parseFloat(offer.offer_amount) : null,
+      comparables: result.comparables.map((comp) => ({
+        title: comp.title,
+        price: comp.price,
+        imageUrl: comp.imageUrl,
+        soldDate: comp.soldDate,
+        source: comp.source,
+        url: comp.url,
+        condition: comp.condition,
+      })),
+      averagePrice: result.averagePrice,
+      count: result.count,
+      cacheHit: result.cacheHit,
+    };
+  });
+
+  /**
+   * GET /api/v1/offers/:id/explanation
+   * Get transparent pricing breakdown for an offer.
+   * Phase 2, Task 3: Transparent Pricing Breakdown
+   */
+  fastify.get('/:id/explanation', { preHandler: optionalAuth }, async (request, reply) => {
+    const { id } = validateParams(uuidParamSchema, request.params);
+    const userId = (request as any).userId || null;
+
+    const offer = await db.findOne('offers', { id });
+
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    // Ownership check if user is logged in
+    if (userId && offer.user_id && offer.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only view your own offer details, partner.' });
+    }
+
+    // Check if offer is ready
+    if (offer.status !== 'ready' && offer.status !== 'accepted') {
+      return reply.status(400).send({
+        error: 'Pricing not ready yet',
+        message: "Hold on, partner — Jake's still working on this one.",
+        status: offer.status,
+      });
+    }
+
+    // Parse pricing breakdown
+    let pricingBreakdown = null;
+    if (offer.pricing_breakdown) {
+      try {
+        pricingBreakdown = JSON.parse(offer.pricing_breakdown);
+      } catch (err) {
+        logger.error({ offerId: id, error: (err as Error).message }, 'Failed to parse pricing_breakdown');
+      }
+    }
+
+    // If no breakdown exists, generate one on the fly (for legacy offers)
+    if (!pricingBreakdown) {
+      pricingBreakdown = pricingExplainer.generateBreakdown({
+        fmv: parseFloat(offer.fmv || '0'),
+        condition: offer.item_condition || 'Unknown',
+        conditionMultiplier: parseFloat(offer.condition_multiplier || '1'),
+        category: offer.item_category || 'Unknown',
+        categoryMargin: parseFloat(offer.category_margin || '0.6'),
+        offerAmount: parseFloat(offer.offer_amount || '0'),
+        confidence: offer.pricing_confidence || offer.fmv_confidence || 0,
+        comparableCount: 0,
+      });
+    }
+
+    return {
+      offerId: id,
+      ...pricingBreakdown,
     };
   });
 

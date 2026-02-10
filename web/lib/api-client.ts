@@ -45,6 +45,29 @@ export interface ProductMetadata {
   condition_specifics?: Record<string, any>;
 }
 
+export interface PricingStep {
+  label: string;
+  value: number;
+  explanation: string;
+}
+
+export interface PricingExplanation {
+  steps: PricingStep[];
+  jakesNote: string;
+}
+
+export interface ComparablesData {
+  comparables: Array<{
+    title: string;
+    price: number;
+    imageUrl: string;
+    soldDate: string;
+    source: "ebay" | "mercari" | "offerup" | "facebook" | "other";
+    url: string;
+  }>;
+  averagePrice: number;
+}
+
 export interface OfferDetails {
   id: string;
   itemName: string;
@@ -70,6 +93,9 @@ export interface OfferDetails {
   // Phase 4 Team 1: Enhanced metadata
   serialNumber?: string;
   productMetadata?: ProductMetadata;
+  // Phase 2 Trust Features
+  pricingExplanation?: PricingExplanation;
+  isExpired?: boolean;
 }
 
 export interface AcceptOfferRequest {
@@ -373,6 +399,38 @@ class APIClient {
 
     if (!response.ok) {
       throw new Error("Failed to fetch profit projections");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get market comparables for an offer (Phase 2 Trust Feature)
+   */
+  async getOfferComparables(offerId: string): Promise<ComparablesData | null> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/offers/${offerId}/comparables`
+    );
+
+    if (!response.ok) {
+      console.warn("Failed to fetch comparables, returning null");
+      return null;
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get pricing breakdown explanation for an offer (Phase 2 Trust Feature)
+   */
+  async getPricingExplanation(offerId: string): Promise<PricingExplanation | null> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/offers/${offerId}/pricing-explanation`
+    );
+
+    if (!response.ok) {
+      console.warn("Failed to fetch pricing explanation, returning null");
+      return null;
     }
 
     return response.json();

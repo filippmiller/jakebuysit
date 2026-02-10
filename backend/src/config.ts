@@ -86,5 +86,7 @@ export const config = {
     redirectUri: process.env.EBAY_REDIRECT_URI || 'http://localhost:3001/api/v1/integrations/ebay/callback',
     sandbox: process.env.EBAY_SANDBOX === 'true',
     paypalEmail: process.env.EBAY_PAYPAL_EMAIL,
+    // Phase 2: eBay Finding API for comparables
+    appId: process.env.EBAY_APP_ID || '', // eBay Finding API App ID
   },
 };

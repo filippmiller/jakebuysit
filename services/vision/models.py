@@ -117,6 +117,9 @@ class IdentifyResponse(BaseModel):
     product_metadata: Optional[ProductMetadata] = Field(None, description="Granular product taxonomy")
     serial_info: Optional[SerialNumberResult] = Field(None, description="Serial number extraction result")
 
+    # Phase 2: Transparent pricing (generated later in pipeline)
+    pricing_breakdown: Optional[PricingBreakdown] = Field(None, description="Transparent pricing explanation")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -143,6 +146,33 @@ class ConditionMultipliers(BaseModel):
     GOOD: float = 0.80
     FAIR: float = 0.625
     POOR: float = 0.40
+
+
+class PricingBreakdownStep(BaseModel):
+    """Single step in pricing breakdown explanation."""
+    label: str = Field(..., description="Human-readable label (e.g., 'Base market value')")
+    value: float = Field(..., description="Numeric value for this step")
+    explanation: str = Field(..., description="Plain-language explanation of this adjustment")
+
+
+class PricingBreakdown(BaseModel):
+    """Transparent pricing breakdown for trust-building."""
+    base_value: float = Field(..., description="Starting fair market value")
+    base_value_source: str = Field(..., description="Source for base value (e.g., 'eBay 30-day average')")
+    base_value_explanation: str = Field(..., description="Explanation of base value calculation")
+
+    condition_adjustment: float = Field(..., description="Adjustment for condition (negative for wear)")
+    condition_explanation: str = Field(..., description="Explanation of condition impact")
+
+    category_margin: float = Field(..., ge=0, le=1, description="Pawn shop margin % (0-1)")
+    category_explanation: str = Field(..., description="Explanation of category margin")
+
+    final_offer: float = Field(..., description="Final calculated offer amount")
+    confidence: int = Field(..., ge=0, le=100, description="Confidence in this pricing")
+
+    # Optional additional adjustments
+    volume_adjustment: Optional[float] = Field(None, description="Market velocity or inventory adjustment")
+    volume_explanation: Optional[str] = Field(None, description="Explanation of volume adjustment")
 
 
 class VisionError(BaseModel):

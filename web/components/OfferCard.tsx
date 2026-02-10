@@ -8,9 +8,18 @@ import { JakeCharacter } from "./JakeCharacter";
 import { ConditionBadge } from "./ConditionBadge";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { ComparableSalesTable } from "./ComparableSalesTable";
+import { PricingBreakdown } from "./PricingBreakdown";
+import { ComparablesSection } from "./ComparablesSection";
+import { PriceLockCountdown } from "./PriceLockCountdown";
 import { formatCurrency, formatTimeRemaining } from "@/lib/utils";
 import { getJakeStateForOffer } from "@/lib/jake-scripts";
-import type { ComparableSale } from "@/lib/api-client";
+import type { ComparableSale, PricingExplanation, ComparablesData } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
+import {
+  generateMockPricingExplanation,
+  generateMockComparables,
+  shouldUseMockData,
+} from "@/lib/mock-trust-data";
 
 interface OfferCardProps {
   offer: {
@@ -68,6 +77,9 @@ export function OfferCard({
   const [showConfetti, setShowConfetti] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
+  const [comparablesData, setComparablesData] = useState<ComparablesData | null>(null);
+  const [pricingExplanation, setPricingExplanation] = useState<PricingExplanation | null>(null);
+  const [loadingExtras, setLoadingExtras] = useState(true);
   const prefersReducedMotion = useReducedMotion();
   const expiresAt = new Date(offer.expiresAt);
   const jakeState = getJakeStateForOffer(
@@ -75,6 +87,58 @@ export function OfferCard({
     offer.marketAvg,
     offer.confidence
   );
+
+  // Fetch Phase 2 trust features data
+  useEffect(() => {
+    const fetchTrustData = async () => {
+      try {
+        // Use mock data in development if backend APIs not ready
+        if (shouldUseMockData()) {
+          console.log("[Dev Mode] Using mock trust features data");
+          setComparablesData(
+            generateMockComparables(offer.itemName, offer.marketAvg, offer.category)
+          );
+          setPricingExplanation(
+            offer.pricingExplanation ||
+              generateMockPricingExplanation(
+                offer.jakePrice,
+                offer.marketAvg,
+                offer.category
+              )
+          );
+          setLoadingExtras(false);
+          return;
+        }
+
+        // Fetch real data from backend
+        const [comparables, explanation] = await Promise.all([
+          apiClient.getOfferComparables(offer.id),
+          apiClient.getPricingExplanation(offer.id),
+        ]);
+        setComparablesData(comparables);
+        setPricingExplanation(explanation || offer.pricingExplanation || null);
+      } catch (error) {
+        console.warn("Failed to fetch trust features data:", error);
+        // Fallback to mock data on error in development
+        if (process.env.NODE_ENV === "development") {
+          setComparablesData(
+            generateMockComparables(offer.itemName, offer.marketAvg, offer.category)
+          );
+          setPricingExplanation(
+            generateMockPricingExplanation(
+              offer.jakePrice,
+              offer.marketAvg,
+              offer.category
+            )
+          );
+        }
+      } finally {
+        setLoadingExtras(false);
+      }
+    };
+
+    fetchTrustData();
+  }, [offer.id, offer.pricingExplanation, offer.itemName, offer.marketAvg, offer.category, offer.jakePrice]);
 
   // Live countdown timer
   useEffect(() => {
@@ -212,6 +276,18 @@ export function OfferCard({
           />
         </div>
 
+        {/* Phase 2 Trust Feature: Pricing Breakdown */}
+        {pricingExplanation && (
+          <div className="mb-6">
+            <PricingBreakdown
+              steps={pricingExplanation.steps}
+              finalOffer={offer.jakePrice}
+              confidence={offer.pricingConfidence ?? offer.confidence}
+              jakesNote={pricingExplanation.jakesNote}
+            />
+          </div>
+        )}
+
         {/* Market Context */}
         <button
           onClick={() => setShowDetails(!showDetails)}
@@ -314,12 +390,21 @@ export function OfferCard({
           </motion.div>
         )}
 
-        {/* Expiry Timer (live countdown) */}
-        <div className={`flex items-center justify-center gap-2 text-sm mb-6 ${
-          isUrgent ? "text-red-400" : "text-[#a89d8a]"
-        }`}>
-          <Clock className={`w-4 h-4 ${isUrgent ? "animate-pulse" : ""}`} />
-          <span>{timeRemaining}</span>
+        {/* Phase 2 Trust Feature: Market Comparables */}
+        {comparablesData && comparablesData.comparables.length > 0 && (
+          <ComparablesSection
+            comparables={comparablesData.comparables}
+            averagePrice={comparablesData.averagePrice}
+            userOffer={offer.jakePrice}
+          />
+        )}
+
+        {/* Phase 2 Trust Feature: Price Lock Countdown */}
+        <div className="mb-6">
+          <PriceLockCountdown
+            expiresAt={offer.expiresAt}
+            isExpired={offer.isExpired || false}
+          />
         </div>
 
         {/* Jake Voice Message */}
@@ -359,11 +444,15 @@ export function OfferCard({
           </button>
           <button
             onClick={handleAccept}
-            disabled={showConfetti}
-            className="py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#1a1510] font-semibold rounded-lg transition-all shadow-[0_4px_16px_rgba(245,158,11,0.2)] hover:shadow-[0_4px_24px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2 disabled:opacity-70"
+            disabled={showConfetti || offer.isExpired}
+            className={`py-4 px-6 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+              offer.isExpired
+                ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-[#1a1510] shadow-[0_4px_16px_rgba(245,158,11,0.2)] hover:shadow-[0_4px_24px_rgba(245,158,11,0.3)] disabled:opacity-70"
+            }`}
           >
             <Package className="w-5 h-5" />
-            {showConfetti ? "Deal!" : "Accept Deal"}
+            {offer.isExpired ? "Offer Expired" : showConfetti ? "Deal!" : "Accept Deal"}
           </button>
         </div>
       </div>

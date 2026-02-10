@@ -3,7 +3,7 @@
  * Supports both old format and new format with condition/confidence/comparables.
  */
 
-import type { OfferDetails, ComparableSale, ConfidenceFactors } from "./api-client";
+import type { OfferDetails, ComparableSale, ConfidenceFactors, PricingExplanation } from "./api-client";
 
 interface BackendOfferResponse {
   id: string;
@@ -51,6 +51,8 @@ interface BackendOfferResponse {
     generation?: string;
     condition_specifics?: Record<string, any>;
   };
+  // Phase 2 Trust Features
+  pricingExplanation?: PricingExplanation;
 }
 
 // Mock data generation removed - backend must provide real data
@@ -97,6 +99,16 @@ export function adaptOfferData(backendOffer: BackendOfferResponse): OfferDetails
   const confidenceFactors: ConfidenceFactors | undefined =
     backendOffer.marketData?.confidence_factors;
 
+  // Check if offer is expired
+  const expiresAtDate = backendOffer.expiresAt
+    ? new Date(backendOffer.expiresAt)
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
+  const isExpired = expiresAtDate.getTime() < Date.now();
+
+  // Extract pricing explanation from backend (if available)
+  const pricingExplanation: PricingExplanation | undefined =
+    (backendOffer as any).pricingExplanation;
+
   return {
     id: backendOffer.id,
     itemName:
@@ -119,10 +131,13 @@ export function adaptOfferData(backendOffer: BackendOfferResponse): OfferDetails
     pricingConfidence: fmvConfidence,
     jakeVoiceUrl: jake?.voiceUrl || "",
     jakeScript: jake?.script || "Howdy, partner!",
-    expiresAt: backendOffer.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: expiresAtDate.toISOString(),
     animationState: jake?.animationState || "default",
     // Phase 4 Team 1: Enhanced metadata
     serialNumber: backendOffer.serialNumber,
     productMetadata: backendOffer.productMetadata,
+    // Phase 2 Trust Features
+    pricingExplanation,
+    isExpired,
   };
 }

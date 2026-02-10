@@ -13,6 +13,7 @@ import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
 import { fraudClient } from '../integrations/fraud-client.js';
 import { profitCalculator } from './profit-calculator.js';
+import { pricingExplainer } from './pricing-explainer.js';
 
 export type OfferStage = 'uploaded' | 'vision' | 'marketplace' | 'pricing' | 'fraud-check' | 'jake-voice' | 'ready' | 'escalated' | 'failed';
 
@@ -242,6 +243,26 @@ export const offerOrchestrator = {
     const estimatedPlatformFees = 0; // Can be adjusted if crossposting
     const estimatedProfit = pricingResult.fmv - (pricingResult.offer_amount + estimatedShippingCost + estimatedPlatformFees);
 
+    // Fetch offer for breakdown generation
+    const offerForBreakdown = await db.findOne('offers', { id: offerId });
+    if (!offerForBreakdown) {
+      await this.fail(offerId, `Offer ${offerId} not found when generating pricing breakdown`);
+      return;
+    }
+
+    // Generate transparent pricing breakdown (Task 3: Phase 2)
+    const pricingBreakdown = pricingExplainer.generateBreakdown({
+      fmv: pricingResult.fmv,
+      condition: offerForBreakdown.item_condition || 'Unknown',
+      conditionMultiplier: pricingResult.condition_multiplier,
+      category: offerForBreakdown.item_category || 'Unknown',
+      categoryMargin: pricingResult.category_margin,
+      offerAmount: pricingResult.offer_amount,
+      confidence: pricingResult.pricing_confidence || pricingResult.fmv_confidence || 0,
+      comparableCount: pricingResult.comparable_sales?.length || 0,
+      dynamicAdjustments: pricingResult.data_quality === 'high' ? undefined : { velocity: 0.95 },
+    });
+
     // Update offer with pricing and profit estimation
     await db.update('offers', { id: offerId }, {
       fmv: pricingResult.fmv,
@@ -259,6 +280,8 @@ export const offerOrchestrator = {
       estimated_profit: estimatedProfit,
       estimated_shipping_cost: estimatedShippingCost,
       estimated_platform_fees: estimatedPlatformFees,
+      // Phase 2: Store pricing breakdown
+      pricing_breakdown: JSON.stringify(pricingBreakdown),
     });
 
     // High value offers get escalated for human review
