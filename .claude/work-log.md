@@ -1,3 +1,92 @@
+## [2026-02-10] - CRITICAL DATA INTEGRITY FIX: Price Update Transactions
+
+**Status**: Completed
+**Duration**: ~45 minutes
+**Severity**: CRITICAL (Financial Data Integrity)
+**Commits**: e12d2ea5
+
+### What was done
+- ✅ Implemented `db.transaction()` wrapper for atomic database operations
+- ✅ Wrapped automated price updates in transaction (price-optimizer.ts)
+- ✅ Fixed admin manual price updates to record price_history (previously missing)
+- ✅ Wrapped admin price updates in transaction for atomicity
+- ✅ Created comprehensive test suite with rollback and commit verification
+- ✅ Added detailed session notes and documentation
+
+### The Critical Vulnerability
+**BEFORE**: Price updates and price_history inserts were separate operations
+```typescript
+await db.update('offers', { id }, { offer_amount: newPrice });
+await db.create('price_history', { ... }); // If this fails, price already changed!
+```
+**Risk**: If price_history insert failed, the offer price was already modified → unauditable price changes, data inconsistency for financial data.
+
+**AFTER**: Both operations are atomic within a transaction
+```typescript
+await db.transaction(async (trx) => {
+  await trx.update('offers', { id }, { offer_amount: newPrice });
+  await trx.create('price_history', { ... });
+  // Both succeed together or both roll back
+});
+```
+
+### Additional Fix: Admin Price History Audit Trail
+Admin manual price adjustments (PATCH /api/v1/admin/offers/:id) were NOT recording price_history at all. Now:
+- Detects price changes in admin updates
+- Records ALL price changes in price_history with:
+  - `trigger_type: 'manual'`
+  - `changed_by: adminId`
+  - Admin notes included in history
+- Uses transaction for atomicity
+
+### Testing Performed
+Created `backend/src/scripts/test-price-transaction.ts`:
+- ✅ Transaction rollback test: Verifies price update rolls back when history insert fails
+- ✅ Transaction commit test: Verifies both operations succeed together
+- ✅ All tests passing
+
+### Technical Implementation
+1. **Transaction Context** (backend/src/db/client.ts):
+   - Provides transactional versions of: findOne, findMany, create, update, delete, query
+   - Automatic BEGIN/COMMIT/ROLLBACK
+   - Proper client release in finally block
+   - Slow query logging within transactions
+
+2. **Type Safety**: Added explicit return type annotations to all transaction methods
+
+3. **Performance**: Transactions scoped only to price updates - minimal impact
+
+### Verification Steps
+```sql
+-- Check all recent price changes have history records
+SELECT o.id, o.offer_amount, ph.new_price, ph.created_at
+FROM offers o
+LEFT JOIN price_history ph ON ph.offer_id = o.id
+WHERE o.updated_at > NOW() - INTERVAL '1 hour';
+```
+
+### Impact
+- **Data Integrity**: Price changes are now atomic
+- **Auditability**: ALL price changes (automated AND manual) now recorded
+- **Compliance**: Financial data modifications fully traceable
+- **Performance**: Minimal impact (transactions only for price updates)
+
+### Files Modified
+- `backend/src/db/client.ts` (+165 lines)
+- `backend/src/queue/jobs/price-optimizer.ts` (lines 176-201)
+- `backend/src/api/routes/admin.ts` (lines 277-320)
+- `backend/src/scripts/test-price-transaction.ts` (new, 178 lines)
+- `.claude/sessions/2026-02-10-price-transaction-integrity.md` (documentation)
+
+### Next Steps
+- Monitor transaction logs for rollback patterns
+- Add transaction metrics to monitoring dashboard
+- Consider transactions for other critical operations (payouts, fraud flags)
+
+**Session notes**: `.claude/sessions/2026-02-10-price-transaction-integrity.md`
+
+---
+
 ## [2026-02-10] - CRITICAL SECURITY FIX: Profit API Authentication
 
 **Status**: Completed
