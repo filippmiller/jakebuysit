@@ -6,24 +6,22 @@
 
 import { FastifyInstance } from 'fastify';
 import { profitCalculator } from '../../services/profit-calculator.js';
+import { requireAuth } from '../middleware/auth.js';
+import { cache } from '../../db/redis.js';
+import { db } from '../../db/client.js';
 import { logger } from '../../utils/logger.js';
 
 export async function profitRoutes(fastify: FastifyInstance) {
   /**
    * GET /api/v1/profits/summary
-   * Get profit summary for a user
+   * Get profit summary for authenticated user
    */
   fastify.get('/summary', {
+    preHandler: requireAuth,
     schema: {
       description: 'Get profit summary for authenticated user',
       tags: ['profits'],
-      querystring: {
-        type: 'object',
-        properties: {
-          userId: { type: 'string', description: 'User ID (temporary - will use JWT auth)' },
-        },
-        required: ['userId'],
-      },
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -39,7 +37,14 @@ export async function profitRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { userId } = request.query as { userId: string };
+    const userId = (request as any).userId;
+
+    // Rate limit: 10 requests per minute per user
+    const rateKey = cache.keys.rateLimitUser(userId, 'profit-1m');
+    const count = await cache.incrementWithExpiry(rateKey, 60);
+    if (count > 10) {
+      return reply.status(429).send({ error: 'Too many requests. Wait a minute, partner.' });
+    }
 
     try {
       const summary = await profitCalculator.getProfitSummary(userId);
@@ -61,17 +66,17 @@ export async function profitRoutes(fastify: FastifyInstance) {
    * Get profit trends over time
    */
   fastify.get('/trends', {
+    preHandler: requireAuth,
     schema: {
       description: 'Get profit trends (weekly or monthly)',
       tags: ['profits'],
+      security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
-          userId: { type: 'string', description: 'User ID' },
           interval: { type: 'string', enum: ['week', 'month'], default: 'week' },
           limit: { type: 'number', default: 12, minimum: 1, maximum: 52 },
         },
-        required: ['userId'],
       },
       response: {
         200: {
@@ -89,11 +94,18 @@ export async function profitRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { userId, interval, limit } = request.query as {
-      userId: string;
+    const userId = (request as any).userId;
+    const { interval, limit } = request.query as {
       interval?: 'week' | 'month';
       limit?: number;
     };
+
+    // Rate limit: 10 requests per minute per user
+    const rateKey = cache.keys.rateLimitUser(userId, 'profit-1m');
+    const count = await cache.incrementWithExpiry(rateKey, 60);
+    if (count > 10) {
+      return reply.status(429).send({ error: 'Too many requests. Wait a minute, partner.' });
+    }
 
     try {
       const trends = await profitCalculator.getProfitTrends(
@@ -119,16 +131,11 @@ export async function profitRoutes(fastify: FastifyInstance) {
    * Get profit breakdown by category
    */
   fastify.get('/by-category', {
+    preHandler: requireAuth,
     schema: {
       description: 'Get profit breakdown by item category',
       tags: ['profits'],
-      querystring: {
-        type: 'object',
-        properties: {
-          userId: { type: 'string', description: 'User ID' },
-        },
-        required: ['userId'],
-      },
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'array',
@@ -146,7 +153,14 @@ export async function profitRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { userId } = request.query as { userId: string };
+    const userId = (request as any).userId;
+
+    // Rate limit: 10 requests per minute per user
+    const rateKey = cache.keys.rateLimitUser(userId, 'profit-1m');
+    const count = await cache.incrementWithExpiry(rateKey, 60);
+    if (count > 10) {
+      return reply.status(429).send({ error: 'Too many requests. Wait a minute, partner.' });
+    }
 
     try {
       const categoryProfits = await profitCalculator.getProfitByCategory(userId);
@@ -168,16 +182,11 @@ export async function profitRoutes(fastify: FastifyInstance) {
    * Get profit projections from pending offers
    */
   fastify.get('/projections', {
+    preHandler: requireAuth,
     schema: {
       description: 'Get estimated profit from pending/active offers',
       tags: ['profits'],
-      querystring: {
-        type: 'object',
-        properties: {
-          userId: { type: 'string', description: 'User ID' },
-        },
-        required: ['userId'],
-      },
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -192,7 +201,14 @@ export async function profitRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { userId } = request.query as { userId: string };
+    const userId = (request as any).userId;
+
+    // Rate limit: 10 requests per minute per user
+    const rateKey = cache.keys.rateLimitUser(userId, 'profit-1m');
+    const count = await cache.incrementWithExpiry(rateKey, 60);
+    if (count > 10) {
+      return reply.status(429).send({ error: 'Too many requests. Wait a minute, partner.' });
+    }
 
     try {
       const projections = await profitCalculator.getProfitProjections(userId);
@@ -211,17 +227,18 @@ export async function profitRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/v1/profits/record-sale
-   * Record a completed sale (admin/internal use)
+   * Record a completed sale (authenticated users only - records sale for their own offer)
    */
   fastify.post('/record-sale', {
+    preHandler: requireAuth,
     schema: {
       description: 'Record a completed sale with profit calculation',
       tags: ['profits'],
+      security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
         properties: {
           offerId: { type: 'string' },
-          userId: { type: 'string' },
           soldPrice: { type: 'number' },
           shippingCost: { type: 'number' },
           ebayFees: { type: 'number' },
@@ -229,7 +246,7 @@ export async function profitRoutes(fastify: FastifyInstance) {
           salePlatform: { type: 'string' },
           saleReference: { type: 'string' },
         },
-        required: ['offerId', 'userId', 'soldPrice'],
+        required: ['offerId', 'soldPrice'],
       },
       response: {
         200: {
@@ -243,9 +260,9 @@ export async function profitRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
+    const userId = (request as any).userId;
     const body = request.body as {
       offerId: string;
-      userId: string;
       soldPrice: number;
       shippingCost?: number;
       ebayFees?: number;
@@ -254,10 +271,29 @@ export async function profitRoutes(fastify: FastifyInstance) {
       saleReference?: string;
     };
 
-    try {
-      const { saleId, profit } = await profitCalculator.recordSale(body);
+    // Rate limit: 10 requests per minute per user
+    const rateKey = cache.keys.rateLimitUser(userId, 'profit-1m');
+    const count = await cache.incrementWithExpiry(rateKey, 60);
+    if (count > 10) {
+      return reply.status(429).send({ error: 'Too many requests. Wait a minute, partner.' });
+    }
 
-      logger.info({ saleId, offerId: body.offerId, profit }, 'Sale recorded');
+    // Verify offer ownership
+    const offer = await db.findOne('offers', { id: body.offerId });
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+    if (offer.user_id !== userId) {
+      return reply.status(403).send({ error: 'You can only record sales for your own offers, partner.' });
+    }
+
+    try {
+      const { saleId, profit } = await profitCalculator.recordSale({
+        ...body,
+        userId,
+      });
+
+      logger.info({ saleId, offerId: body.offerId, userId, profit }, 'Sale recorded');
 
       return reply.send({
         saleId,
@@ -265,7 +301,7 @@ export async function profitRoutes(fastify: FastifyInstance) {
         message: 'Sale recorded successfully',
       });
     } catch (error: any) {
-      logger.error({ error: error.message, offerId: body.offerId }, 'Failed to record sale');
+      logger.error({ error: error.message, offerId: body.offerId, userId }, 'Failed to record sale');
       return reply.status(500).send({
         error: 'Failed to record sale',
         message: error.message,

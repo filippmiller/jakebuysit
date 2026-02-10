@@ -54,9 +54,6 @@ export default function ProfitsPage() {
   const [loading, setLoading] = useState(true);
   const [interval, setInterval] = useState<'week' | 'month'>('week');
 
-  // Mock user ID - in production would come from auth
-  const userId = "00000000-0000-0000-0000-000000000001";
-
   useEffect(() => {
     loadProfitData();
   }, [interval]);
@@ -65,10 +62,10 @@ export default function ProfitsPage() {
     try {
       setLoading(true);
       const [summaryData, trendsData, categoryData, projectionData] = await Promise.all([
-        apiClient.getProfitSummary(userId),
-        apiClient.getProfitTrends(userId, interval, interval === 'week' ? 12 : 6),
-        apiClient.getProfitByCategory(userId),
-        apiClient.getProfitProjections(userId),
+        apiClient.getProfitSummary(),
+        apiClient.getProfitTrends(interval, interval === 'week' ? 12 : 6),
+        apiClient.getProfitByCategory(),
+        apiClient.getProfitProjections(),
       ]);
 
       setSummary(summaryData);

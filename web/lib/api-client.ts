@@ -304,11 +304,14 @@ class APIClient {
   }
 
   /**
-   * Get profit summary for user
+   * Get profit summary for authenticated user
    */
-  async getProfitSummary(userId: string): Promise<ProfitSummary> {
+  async getProfitSummary(): Promise<ProfitSummary> {
     const response = await this.fetchWithTimeout(
-      `${this.baseUrl}/api/v1/profits/summary?userId=${userId}`
+      `${this.baseUrl}/api/v1/profits/summary`,
+      {
+        headers: this.getAuthHeaders(),
+      }
     );
 
     if (!response.ok) {
@@ -319,15 +322,17 @@ class APIClient {
   }
 
   /**
-   * Get profit trends (weekly or monthly)
+   * Get profit trends (weekly or monthly) for authenticated user
    */
   async getProfitTrends(
-    userId: string,
     interval: 'week' | 'month' = 'week',
     limit: number = 12
   ): Promise<ProfitTrend[]> {
     const response = await this.fetchWithTimeout(
-      `${this.baseUrl}/api/v1/profits/trends?userId=${userId}&interval=${interval}&limit=${limit}`
+      `${this.baseUrl}/api/v1/profits/trends?interval=${interval}&limit=${limit}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
     );
 
     if (!response.ok) {
@@ -338,11 +343,14 @@ class APIClient {
   }
 
   /**
-   * Get profit breakdown by category
+   * Get profit breakdown by category for authenticated user
    */
-  async getProfitByCategory(userId: string): Promise<CategoryProfit[]> {
+  async getProfitByCategory(): Promise<CategoryProfit[]> {
     const response = await this.fetchWithTimeout(
-      `${this.baseUrl}/api/v1/profits/by-category?userId=${userId}`
+      `${this.baseUrl}/api/v1/profits/by-category`,
+      {
+        headers: this.getAuthHeaders(),
+      }
     );
 
     if (!response.ok) {
@@ -353,11 +361,14 @@ class APIClient {
   }
 
   /**
-   * Get profit projections from pending offers
+   * Get profit projections from pending offers for authenticated user
    */
-  async getProfitProjections(userId: string): Promise<ProfitProjection> {
+  async getProfitProjections(): Promise<ProfitProjection> {
     const response = await this.fetchWithTimeout(
-      `${this.baseUrl}/api/v1/profits/projections?userId=${userId}`
+      `${this.baseUrl}/api/v1/profits/projections`,
+      {
+        headers: this.getAuthHeaders(),
+      }
     );
 
     if (!response.ok) {
