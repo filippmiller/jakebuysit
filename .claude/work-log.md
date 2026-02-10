@@ -1,3 +1,145 @@
+## [2026-02-10] - [Phase 3 Team 2] Collaborative Filtering Recommendation Engine
+
+**Status**: Completed
+**Duration**: ~90 minutes
+**Beads Issue**: pawn-cur
+**Commits**: Pending
+
+### What was implemented
+
+#### 1. Database Migration (`backend/src/db/migrations/006_user_activity.sql`)
+- ✅ New `user_activity` table for tracking user interactions
+- ✅ Columns: user_id, offer_id, activity_type, source, device_type, time_spent_seconds, scroll_depth
+- ✅ Indexes optimized for collaborative filtering queries:
+  - `idx_user_activity_user` - user-based queries
+  - `idx_user_activity_collab` - collaborative filtering (user + offer + activity type)
+  - `idx_user_activity_trending` - trending queries (time-based)
+- ✅ Activity types: 'view', 'accept', 'decline', 'share'
+
+#### 2. Recommendation Engine Service (`services/recommendations/`)
+- ✅ FastAPI service on port 8005
+- ✅ `engine.py` - Core recommendation algorithms:
+  - **Collaborative Filtering**: Find users with similar viewing patterns
+  - **Content-Based Filtering**: Match by category, brand, price range
+  - **Trending Analysis**: Popular items weighted by views + accepts
+  - **Hybrid Approach**: Combines all algorithms with deduplication
+- ✅ `models.py` - Pydantic schemas for request/response validation
+- ✅ `router.py` - API endpoints:
+  - `POST /api/v1/recommendations/for-user` - Personalized recommendations
+  - `POST /api/v1/recommendations/similar` - Similar items to an offer
+  - `POST /api/v1/recommendations/trending` - Trending items
+  - `GET /health` - Service health check
+- ✅ `main.py` - FastAPI app with lifespan management
+- ✅ Redis caching (1 hour for user recs, 30 minutes for trending)
+- ✅ PostgreSQL connection pooling (2-10 connections)
+
+#### 3. Backend Integration (`backend/src/integrations/recommendations-client.ts`)
+- ✅ TypeScript client for recommendation service
+- ✅ Methods: `forUser()`, `similar()`, `trending()`
+- ✅ 10 second timeout with abort controller
+- ✅ Error handling with fallback support
+
+#### 4. Backend API Endpoints (`backend/src/api/routes/offers.ts`)
+- ✅ `POST /api/v1/offers/:id/view` - Track user views
+  - Captures: source, device type, time spent, scroll depth, session ID
+  - Works with both authenticated and anonymous users
+- ✅ `GET /api/v1/offers/:id/recommendations` - Similar items
+- ✅ `GET /api/v1/offers/trending` - Trending offers
+- ✅ Fallback to recent offers if recommendation service fails
+
+#### 5. Frontend Components (`web/components/RecommendationsSection.tsx`)
+- ✅ Reusable React component for displaying recommendations
+- ✅ Supports three modes: 'similar', 'trending', 'user'
+- ✅ Loading skeleton animations
+- ✅ Responsive grid layout (1-5 columns)
+- ✅ Thumbnail images with fallback SVG
+- ✅ Match score badges
+- ✅ Hover effects and transitions
+
+#### 6. Dashboard Integration (`web/app/dashboard/page.tsx`)
+- ✅ "Trending Now" section added to dashboard
+- ✅ Shows top 5 trending offers
+- ✅ Integrated with existing design system
+
+### Technical Details
+
+**Collaborative Filtering Algorithm:**
+1. Find users who viewed the same items as target user
+2. Identify items those similar users also viewed/accepted
+3. Rank by number of recommenders and acceptance rate
+4. Score: 0.8 + (0.2 × min(accept_count, 5) / 5.0)
+
+**Content-Based Algorithm:**
+1. Extract user preferences from history (categories, brands, price)
+2. Calculate similarity score:
+   - Category match: +2 points
+   - Brand match: +2 points
+   - Price within 30% range: +1 point
+3. Score: 0.5 + (similarity_score × 0.15)
+
+**Trending Algorithm:**
+- Trending score = (view_count × 1.0) + (accept_count × 10.0)
+- Accepts weighted 10x higher than views
+- Results sorted by score descending
+
+**Hybrid Approach:**
+1. Run collaborative filtering
+2. Run content-based filtering
+3. Interleave results (prioritize collaborative slightly)
+4. Deduplicate by offer_id
+5. Fill remaining slots with trending items
+6. Cache for 1 hour
+
+### Performance Optimizations
+- PostgreSQL indexes on user_activity table
+- Redis caching (1 hour for user recs, 30 min for trending)
+- asyncpg connection pooling (2-10 connections)
+- Lazy loading on frontend components
+- Graceful degradation when service unavailable
+
+### Files Created
+- `backend/src/db/migrations/006_user_activity.sql` (database schema)
+- `services/recommendations/__init__.py`
+- `services/recommendations/models.py` (~95 lines)
+- `services/recommendations/engine.py` (~550 lines - core algorithms)
+- `services/recommendations/router.py` (~180 lines - API endpoints)
+- `services/recommendations/main.py` (~115 lines - FastAPI app)
+- `services/recommendations/requirements.txt`
+- `services/recommendations/test_service.py` (test script)
+- `services/recommendations/README.md` (~450 lines - comprehensive docs)
+- `backend/src/integrations/recommendations-client.ts` (~105 lines)
+- `web/components/RecommendationsSection.tsx` (~200 lines)
+
+### Files Modified
+- `backend/src/config.ts` - Added `recommendationsUrl` to agents config
+- `backend/src/api/routes/offers.ts` - Added view tracking and recommendation endpoints
+- `web/app/dashboard/page.tsx` - Added trending section
+
+### Testing
+- ✅ Service imports test passed
+- ✅ Pydantic model validation working
+- ✅ Database migration ready to apply
+- ⏳ Service ready to start with: `python -m services.recommendations.main`
+- ⏳ Requires PostgreSQL and Redis running
+
+### Documentation
+- Comprehensive README with:
+  - API endpoint documentation
+  - Algorithm explanations
+  - Setup instructions
+  - Integration examples
+  - Future enhancement ideas
+
+### Next Steps
+1. Apply database migration: `psql $DATABASE_URL < backend/src/db/migrations/006_user_activity.sql`
+2. Start recommendation service: `cd services/recommendations && python -m recommendations.main`
+3. Seed some test user activity data
+4. Test frontend recommendations display
+5. Monitor cache hit rates and query performance
+6. Consider adding A/B testing framework
+
+---
+
 ## [2026-02-10] - [Phase 3 Team 1] Real-time Marketplace Scraper Implementation
 
 **Status**: Completed
