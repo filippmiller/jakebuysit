@@ -11,6 +11,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../../db/client.js';
 import { cache } from '../../db/redis.js';
 import { offerOrchestrator } from '../../services/offer-orchestrator.js';
+import { loyaltyService } from '../../services/loyalty.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { logger } from '../../utils/logger.js';
 import { createOfferSchema, declineOfferSchema, listOffersQuerySchema, uuidParamSchema, validateBody, validateParams, validateQuery } from '../schemas.js';
@@ -227,13 +228,76 @@ export async function offerRoutes(fastify: FastifyInstance) {
       after: JSON.stringify({ status: 'accepted' }),
     });
 
-    logger.info({ offerId: id, userId }, 'Offer accepted');
+    // Loyalty integration: Award Jake Bucks and update user stats
+    const offerAmount = parseFloat(offer.offer_amount);
+    let jakeBucksAwarded = 0;
+    let tierChanged = false;
+    let newTier = null;
+
+    try {
+      // Update user statistics (items sold + sales value)
+      const user = await db.findOne<any>('users', { id: userId });
+      if (user) {
+        const newItemsSold = (user.total_items_sold || 0) + 1;
+        const newSalesValue = parseFloat(user.total_sales_value || '0') + offerAmount;
+
+        await db.update('users', { id: userId }, {
+          total_items_sold: newItemsSold,
+          total_sales_value: newSalesValue,
+        });
+
+        // Check if user should be upgraded to a higher tier
+        const tierUpdate = await loyaltyService.updateUserTier(userId);
+        tierChanged = tierUpdate.tierChanged;
+        newTier = tierUpdate.newTier;
+
+        // Award Jake Bucks (base: $1 = 10 Bucks, multiplied by tier earn rate)
+        const rules = await loyaltyService.getJakeBucksRules();
+        const baseJakeBucks = Math.floor(offerAmount * rules.base_earn_per_dollar);
+
+        if (baseJakeBucks >= rules.min_offer_for_bucks) {
+          const awardResult = await loyaltyService.awardJakeBucks(
+            userId,
+            baseJakeBucks,
+            `Offer accepted: ${offer.item_brand || 'item'} ${offer.item_model || ''}`.trim(),
+            'offer',
+            id
+          );
+          jakeBucksAwarded = awardResult.awarded;
+
+          logger.info({
+            offerId: id,
+            userId,
+            offerAmount,
+            jakeBucksAwarded,
+            tierChanged,
+            newTier,
+          }, 'Jake Bucks awarded for offer acceptance');
+        }
+      }
+    } catch (err) {
+      logger.error({ error: (err as Error).message, offerId: id, userId }, 'Failed to process loyalty rewards');
+      // Don't fail the offer acceptance if loyalty rewards fail
+    }
+
+    logger.info({ offerId: id, userId, jakeBucksAwarded, tierChanged }, 'Offer accepted');
+
+    const responseMessage = tierChanged
+      ? `Deal! You earned ${jakeBucksAwarded} Jake Bucks and got promoted to ${newTier}! Now let's get this shipped.`
+      : jakeBucksAwarded > 0
+      ? `Deal! You earned ${jakeBucksAwarded} Jake Bucks. Now let's get this shipped to the warehouse.`
+      : "Deal! Now let's get this shipped to the warehouse.";
 
     return {
       status: 'accepted',
-      message: "Deal! Now let's get this shipped to the warehouse.",
+      message: responseMessage,
       nextStep: 'shipping',
-      offerAmount: parseFloat(offer.offer_amount),
+      offerAmount,
+      loyalty: {
+        jakeBucksAwarded,
+        tierChanged,
+        newTier: tierChanged ? newTier : undefined,
+      },
     };
   });
 

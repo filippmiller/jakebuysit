@@ -71,7 +71,6 @@ export function ReviewStep({ data, onBack }: ReviewStepProps) {
         err instanceof Error ? err.message : jakeVoice.errors.generic
       );
       setUploadPhase("idle");
-      setUploadProgress(0);
       console.error("Submit error:", err);
     } finally {
       setIsSubmitting(false);
