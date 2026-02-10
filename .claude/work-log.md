@@ -1,3 +1,56 @@
+## [2026-02-10] - CRITICAL SECURITY FIX: Profit API Authentication
+
+**Status**: Completed
+**Duration**: ~25 minutes
+**Severity**: CRITICAL (Privacy Violation)
+**Commits**: 595151b0
+
+### What was done
+- ✅ Added JWT authentication to all 5 profit API endpoints
+- ✅ Removed userId from query strings (security vulnerability)
+- ✅ Extract userId from verified JWT tokens instead
+- ✅ Added rate limiting: 10 requests/min per user
+- ✅ Added offer ownership check for POST /record-sale
+- ✅ Updated frontend API client to send auth headers
+- ✅ Created test script: backend/test-profit-auth.sh
+
+### The Critical Vulnerability
+**BEFORE**: Anyone could query any user's profit data via `?userId=...` parameter
+```bash
+curl http://localhost:8080/api/v1/profits/summary?userId=<any-uuid>
+# Returns private profit data without authentication
+```
+
+**AFTER**: Only authenticated users can access their own data
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8080/api/v1/profits/summary
+# Returns 401 without valid JWT
+# Returns 200 with valid JWT (only user's own data)
+```
+
+### Technical Implementation
+- **Auth Middleware**: `requireAuth` on all endpoints (JWT verification)
+- **Rate Limiting**: Redis-backed per-user rate limiting (10/min)
+- **Ownership Check**: Verify offer.user_id matches JWT userId for POST /record-sale
+- **Frontend Update**: API client automatically sends JWT from localStorage
+
+### Files changed
+- backend/src/api/routes/profits.ts (Lines 16-274) - Auth + rate limiting
+- web/lib/api-client.ts (Lines 306-368) - Remove userId param, add auth headers
+- web/app/dashboard/profits/page.tsx (Lines 57-85) - Updated API calls
+- backend/test-profit-auth.sh (NEW) - Security test script
+
+### Impact
+- Prevents privacy violation (users can't see others' profit data)
+- Prevents competitive intelligence leakage
+- Adds abuse prevention via rate limiting
+- Ensures GDPR/privacy compliance
+
+**Session notes**: `.claude/sessions/2026-02-10-profit-api-security-fix.md`
+
+---
+
 ## [2026-02-10] - Phase 4 Team 1: Serial Number Extraction + Deep Product Identification
 
 **Status**: Completed
