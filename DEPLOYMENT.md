@@ -1,5 +1,51 @@
 # JakeBuysIt — VPS Deployment Guide
 
+---
+
+## 🤖 ДЛЯ АГЕНТОВ — ЧИТАЙ СНАЧАЛА ЭТО!
+
+### ГДЕ ЖИВЕТ САЙТ
+- **VPS:** Hetzner Cloud
+- **Deploy Tool:** Coolify
+- **GitHub:** https://github.com/filippmiller/jakebuysit
+- **Branch:** `master`
+
+### КАК ЗАДЕПЛОИТЬ
+```bash
+# 1. Закоммить и запушить
+git commit -m "feat: описание изменений"
+git push origin master
+
+# 2. Coolify автоматически задеплоит (если auto-deploy включен)
+#    ИЛИ нажми "Redeploy" в Coolify dashboard
+
+# 3. Если есть миграции БД:
+ssh root@<vps-ip>
+cd /opt/jakebuysit
+docker-compose exec backend npx tsx src/scripts/apply-all-migrations.ts
+
+# 4. Проверь deployment:
+docker-compose ps  # Все сервисы = Up
+curl http://localhost:8080/health  # {"status":"ok"}
+docker-compose logs --tail=50 backend  # Нет ошибок
+```
+
+### ❌ НИКОГДА
+- Не называй localhost "production"
+- Не запускай .bat скрипты на VPS (только bash/docker-compose)
+- Не коммить .env файлы
+- Не деплой без миграций, если код их использует
+
+### ✅ ВСЕГДА
+- Тест локально: `docker-compose up` перед пушем
+- Миграции перед кодом
+- Проверяй health endpoints после деплоя
+- Читай логи: `docker-compose logs -f`
+
+**Детали ниже ↓**
+
+---
+
 ## 🌐 PRODUCTION ENVIRONMENT
 
 **VPS Location:** Hetzner Cloud
