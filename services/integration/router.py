@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import structlog
 
-from services.vision.identify import vision_identifier
-from services.marketplace.aggregator import marketplace_aggregator
-from services.pricing.fmv import fmv_engine
-from services.pricing.offer import offer_engine
+from vision.identify import vision_identifier
+from marketplace.aggregator import marketplace_aggregator
+from pricing.fmv import fmv_engine
+from pricing.offer import offer_engine
 
 logger = structlog.get_logger()
 router = APIRouter()
