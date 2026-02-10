@@ -11,8 +11,9 @@ import { cache } from '../db/redis.js';
 import { addJob } from '../queue/workers.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
+import { fraudClient } from '../integrations/fraud-client.js';
 
-export type OfferStage = 'uploaded' | 'vision' | 'marketplace' | 'pricing' | 'jake-voice' | 'ready' | 'escalated' | 'failed';
+export type OfferStage = 'uploaded' | 'vision' | 'marketplace' | 'pricing' | 'fraud-check' | 'jake-voice' | 'ready' | 'escalated' | 'failed';
 
 const STAGE_CACHE_TTL = 600; // 10 minutes — transient processing data
 
@@ -226,11 +227,119 @@ export const offerOrchestrator = {
       return;
     }
 
-    // Fetch offer for jake context
+    // Fetch offer for fraud check and jake context
     const offer = await db.findOne('offers', { id: offerId });
     if (!offer) {
-      await this.fail(offerId, `Offer ${offerId} not found when chaining to jake-voice`);
+      await this.fail(offerId, `Offer ${offerId} not found when chaining to fraud-check`);
       return;
+    }
+
+    // Run fraud detection analysis
+    await this.setStage(offerId, 'fraud-check');
+
+    try {
+      // Fetch user data for fraud analysis
+      let user = null;
+      let userCreatedAt = null;
+      let userOfferCount = 0;
+      let userTrustScore = 50;
+
+      if (offer.user_id) {
+        user = await db.findOne('users', { id: offer.user_id });
+        if (user) {
+          userCreatedAt = user.created_at;
+          userTrustScore = user.trust_score || 50;
+
+          // Count user's total offers
+          const userOffers = await db.query(
+            'SELECT COUNT(*) as count FROM offers WHERE user_id = $1',
+            [offer.user_id]
+          );
+          userOfferCount = userOffers.rows[0]?.count || 0;
+        }
+      }
+
+      const fraudResult = await fraudClient.analyzeFraud({
+        offer_id: offerId,
+        user_id: offer.user_id,
+        offer_amount: pricingResult.offer_amount,
+        fmv: pricingResult.fmv,
+        category: offer.item_category,
+        condition: offer.item_condition,
+        user_created_at: userCreatedAt,
+        user_offer_count: userOfferCount,
+        user_trust_score: userTrustScore,
+        photo_urls: JSON.parse(offer.photos).map((p: any) => p.url),
+        description: offer.user_description,
+        // ip_address and user_agent would come from request context
+      });
+
+      // Store fraud check result
+      await db.create('fraud_checks', {
+        user_id: offer.user_id,
+        offer_id: offerId,
+        check_type: 'ml_analysis',
+        result: fraudResult.risk_level === 'low' ? 'pass' : fraudResult.risk_level === 'medium' ? 'flag' : 'fail',
+        confidence: fraudResult.confidence,
+        risk_score: fraudResult.risk_score,
+        risk_level: fraudResult.risk_level,
+        flags: JSON.stringify(fraudResult.flags),
+        breakdown: JSON.stringify(fraudResult.breakdown),
+        explanation: fraudResult.explanation,
+        recommended_action: fraudResult.recommended_action,
+        action_taken: 'none', // Will be updated if escalation happens
+        details: JSON.stringify({
+          analyzed_at: fraudResult.analyzed_at,
+          flag_count: fraudResult.flags.length,
+        }),
+      });
+
+      // Handle fraud detection results
+      if (fraudResult.recommended_action === 'reject') {
+        await db.update('fraud_checks', { offer_id: offerId, check_type: 'ml_analysis' }, {
+          action_taken: 'reject',
+        });
+        await this.escalate(
+          offerId,
+          'fraud_rejected',
+          `Fraud detection: ${fraudResult.explanation} (risk score: ${fraudResult.risk_score})`
+        );
+        return;
+      } else if (fraudResult.recommended_action === 'escalate') {
+        await db.update('fraud_checks', { offer_id: offerId, check_type: 'ml_analysis' }, {
+          action_taken: 'escalate',
+        });
+        await this.escalate(
+          offerId,
+          'fraud_high_risk',
+          `Fraud detection flagged high risk: ${fraudResult.explanation} (risk score: ${fraudResult.risk_score})`
+        );
+        return;
+      } else if (fraudResult.recommended_action === 'review' && fraudResult.risk_score >= 60) {
+        await db.update('fraud_checks', { offer_id: offerId, check_type: 'ml_analysis' }, {
+          action_taken: 'flag',
+        });
+        // Flag but continue - admin will review later
+        logger.warn({ offerId, riskScore: fraudResult.risk_score }, 'Fraud detection flagged for review');
+      }
+
+      logger.info(
+        { offerId, riskScore: fraudResult.risk_score, riskLevel: fraudResult.risk_level },
+        'Fraud check passed, continuing to jake-voice'
+      );
+
+    } catch (fraudError: any) {
+      // Don't block the pipeline if fraud service is down
+      logger.error({ offerId, error: fraudError.message }, 'Fraud check failed, continuing anyway');
+      await db.create('fraud_checks', {
+        user_id: offer.user_id,
+        offer_id: offerId,
+        check_type: 'ml_analysis',
+        result: 'flag',
+        confidence: 0,
+        action_taken: 'none',
+        details: JSON.stringify({ error: fraudError.message }),
+      });
     }
 
     // Determine jake scenario based on offer ratio
