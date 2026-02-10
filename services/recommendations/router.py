@@ -2,7 +2,9 @@
 Recommendation Service API Router
 FastAPI endpoints for recommendation queries
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from .models import (
     RecommendationRequest,
     SimilarItemsRequest,
@@ -17,6 +19,9 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 
 # Global engine instance (set by main.py)
 _engine: RecommendationEngine = None
@@ -29,10 +34,12 @@ def set_engine(engine: RecommendationEngine):
 
 
 @router.post("/for-user", response_model=RecommendationResponse)
-async def get_user_recommendations(request: RecommendationRequest):
+@limiter.limit("10/minute")
+async def get_user_recommendations(request: RecommendationRequest, http_request: Request):
     """
     Get personalized recommendations for a user
     Uses hybrid approach: collaborative filtering + content-based + trending
+    Rate limit: 10 requests per minute per IP
     """
     try:
         logger.info(f"Getting recommendations for user {request.user_id}")
@@ -58,10 +65,12 @@ async def get_user_recommendations(request: RecommendationRequest):
 
 
 @router.post("/similar", response_model=RecommendationResponse)
-async def get_similar_items(request: SimilarItemsRequest):
+@limiter.limit("20/minute")
+async def get_similar_items(request: SimilarItemsRequest, http_request: Request):
     """
     Get items similar to a given offer
     Uses content-based filtering on category, brand, price, condition
+    Rate limit: 20 requests per minute per IP
     """
     try:
         logger.info(f"Getting similar items to offer {request.offer_id}")
@@ -95,10 +104,12 @@ async def get_similar_items(request: SimilarItemsRequest):
 
 
 @router.post("/trending", response_model=RecommendationResponse)
-async def get_trending_items(request: TrendingRequest):
+@limiter.limit("20/minute")
+async def get_trending_items(request: TrendingRequest, http_request: Request):
     """
     Get trending items based on recent views and accepts
     Trending score = (views * 1.0) + (accepts * 10.0)
+    Rate limit: 20 requests per minute per IP
     """
     try:
         logger.info(f"Getting trending items for {request.days} days")

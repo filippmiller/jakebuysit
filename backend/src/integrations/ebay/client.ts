@@ -2,6 +2,7 @@
  * eBay Trading API Client
  * Handles listing creation, updates, and management
  */
+import { XMLParser } from 'fast-xml-parser';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 import {
@@ -11,6 +12,14 @@ import {
   EBAY_CONDITION_MAP,
   EBAY_CATEGORY_MAP,
 } from './types.js';
+
+// XML parser configuration
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '_',
+  parseAttributeValue: true,
+  trimValues: true,
+});
 
 const EBAY_TRADING_API = config.ebay.sandbox
   ? 'https://api.sandbox.ebay.com/ws/api.dll'
@@ -202,54 +211,78 @@ function buildItemXml(item: any): string {
 }
 
 /**
- * Parse eBay XML response (simplified)
+ * Parse eBay XML response using fast-xml-parser
+ * More robust and secure than regex-based parsing
  */
 function parseEbayXmlResponse(xml: string): EbayApiResponse<any> {
-  // Extract Ack status
-  const ackMatch = xml.match(/<Ack>(.*?)<\/Ack>/);
-  const ack = ackMatch?.[1] as 'Success' | 'Warning' | 'Failure' | 'PartialFailure' || 'Failure';
+  try {
+    const parsed = xmlParser.parse(xml);
 
-  // Extract ItemID
-  const itemIdMatch = xml.match(/<ItemID>(.*?)<\/ItemID>/);
-  const itemId = itemIdMatch?.[1];
+    // eBay responses are wrapped in either AddFixedPriceItemResponse or similar
+    const responseKey = Object.keys(parsed).find(k => k.includes('Response'));
+    const response = responseKey ? parsed[responseKey] : parsed;
 
-  // Extract fees (simplified)
-  const fees: any[] = [];
-  const feeMatches = xml.matchAll(/<Fee currencyID="(.*?)">(.*?)<\/Fee>/g);
-  for (const match of feeMatches) {
-    fees.push({
-      Name: 'ListingFee',
-      Fee: {
-        _value: parseFloat(match[2]),
-        currencyID: match[1],
-      },
-    });
+    const ack = response.Ack as 'Success' | 'Warning' | 'Failure' | 'PartialFailure' || 'Failure';
+
+    // Extract errors if present
+    const errors: any[] = [];
+    if (response.Errors) {
+      const errorList = Array.isArray(response.Errors) ? response.Errors : [response.Errors];
+      for (const error of errorList) {
+        errors.push({
+          ErrorCode: error.ErrorCode || '0',
+          ShortMessage: error.ShortMessage || 'Error',
+          LongMessage: error.LongMessage || 'Unknown error',
+          SeverityCode: error.SeverityCode || 'Error',
+        });
+      }
+    }
+
+    // Extract listing data if successful
+    let data: any = undefined;
+    if (response.ItemID) {
+      // Parse fees
+      const fees: any[] = [];
+      if (response.Fees && response.Fees.Fee) {
+        const feeList = Array.isArray(response.Fees.Fee) ? response.Fees.Fee : [response.Fees.Fee];
+        for (const fee of feeList) {
+          fees.push({
+            Name: fee.Name || 'ListingFee',
+            Fee: {
+              _value: parseFloat(fee.Fee?._value || fee.Fee || '0'),
+              currencyID: fee.Fee?._currencyID || 'USD',
+            },
+          });
+        }
+      }
+
+      data = {
+        ItemID: response.ItemID,
+        StartTime: response.StartTime || new Date().toISOString(),
+        EndTime: response.EndTime || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        Fees: {
+          Fee: fees,
+        },
+      };
+    }
+
+    return {
+      Ack: ack,
+      Errors: errors.length > 0 ? errors : undefined,
+      data,
+    };
+  } catch (err: any) {
+    logger.error({ error: err.message }, 'XML parsing error');
+    return {
+      Ack: 'Failure',
+      Errors: [{
+        ErrorCode: 'XML_PARSE_ERROR',
+        ShortMessage: 'XML Parsing Failed',
+        LongMessage: `Failed to parse XML response: ${err.message}`,
+        SeverityCode: 'Error',
+      }],
+    };
   }
-
-  // Extract errors if any
-  const errors: any[] = [];
-  const errorMatch = xml.match(/<LongMessage>(.*?)<\/LongMessage>/);
-  if (errorMatch) {
-    errors.push({
-      LongMessage: errorMatch[1],
-      ShortMessage: 'Error',
-      ErrorCode: '0',
-      SeverityCode: 'Error',
-    });
-  }
-
-  return {
-    Ack: ack,
-    Errors: errors.length > 0 ? errors : undefined,
-    data: itemId ? {
-      ItemID: itemId,
-      StartTime: new Date().toISOString(),
-      EndTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      Fees: {
-        Fee: fees,
-      },
-    } : undefined,
-  };
 }
 
 /**

@@ -6,6 +6,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../../db/client.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logger } from '../../utils/logger.js';
+import { encrypt, decrypt } from '../../utils/encryption.js';
 import {
   getAuthorizationUrl,
   exchangeCodeForToken,
@@ -75,13 +76,17 @@ export async function integrationRoutes(fastify: FastifyInstance) {
       // Calculate token expiry
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
 
+      // Encrypt tokens before storage
+      const encryptedAccessToken = await encrypt(tokenData.access_token);
+      const encryptedRefreshToken = await encrypt(tokenData.refresh_token);
+
       // Store/update eBay account in database
       const existingAccount = await db.findOne('ebay_accounts', { user_id: userId });
 
       if (existingAccount) {
         await db.update('ebay_accounts', existingAccount.id, {
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
+          access_token_encrypted: encryptedAccessToken,
+          refresh_token_encrypted: encryptedRefreshToken,
           token_expires_at: expiresAt,
           ebay_user_id: userInfo.userId,
           ebay_username: userInfo.username,
@@ -91,8 +96,8 @@ export async function integrationRoutes(fastify: FastifyInstance) {
       } else {
         await db.create('ebay_accounts', {
           user_id: userId,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
+          access_token_encrypted: encryptedAccessToken,
+          refresh_token_encrypted: encryptedRefreshToken,
           token_expires_at: expiresAt,
           ebay_user_id: userInfo.userId,
           ebay_username: userInfo.username,
@@ -238,16 +243,23 @@ export async function integrationRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'No eBay account connected' });
       }
 
+      // Decrypt tokens
+      let accessToken = await decrypt(ebayAccount.access_token_encrypted);
+      const refreshToken = await decrypt(ebayAccount.refresh_token_encrypted);
+
       // Refresh token if needed
-      let accessToken = ebayAccount.access_token;
       if (needsTokenRefresh(new Date(ebayAccount.token_expires_at))) {
         logger.info({ userId }, 'Refreshing eBay access token');
-        const newTokens = await refreshAccessToken(ebayAccount.refresh_token);
+        const newTokens = await refreshAccessToken(refreshToken);
         const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
 
+        // Encrypt new tokens
+        const encryptedAccessToken = await encrypt(newTokens.access_token);
+        const encryptedRefreshToken = await encrypt(newTokens.refresh_token);
+
         await db.update('ebay_accounts', ebayAccount.id, {
-          access_token: newTokens.access_token,
-          refresh_token: newTokens.refresh_token,
+          access_token_encrypted: encryptedAccessToken,
+          refresh_token_encrypted: encryptedRefreshToken,
           token_expires_at: newExpiresAt,
         });
 
