@@ -91,13 +91,22 @@ export async function offerRoutes(fastify: FastifyInstance) {
       userDescription: offer.user_description,
       // AI confidence
       aiConfidence: offer.ai_confidence,
+      // Condition assessment (Phase 1 enhancement)
+      conditionAssessment: offer.condition_grade ? {
+        grade: offer.condition_grade,
+        notes: offer.condition_notes,
+      } : null,
       // Pricing (populated after pricing stage)
       pricing: offer.fmv ? {
         fmv: parseFloat(offer.fmv),
         fmvConfidence: offer.fmv_confidence,
         offerAmount: parseFloat(offer.offer_amount),
         offerToMarketRatio: offer.offer_to_market_ratio,
+        // Phase 1 enhancement: confidence score
+        pricingConfidence: offer.pricing_confidence,
       } : null,
+      // Comparable sales data (Phase 1 enhancement)
+      comparableSales: offer.comparable_sales || [],
       // Jake personality (populated after jake-voice stage)
       jake: offer.jake_script ? {
         script: offer.jake_script,
@@ -267,7 +276,9 @@ export async function offerRoutes(fastify: FastifyInstance) {
         itemBrand: o.item_brand,
         itemModel: o.item_model,
         itemCondition: o.item_condition,
+        conditionGrade: o.condition_grade,
         offerAmount: o.offer_amount ? parseFloat(o.offer_amount) : null,
+        pricingConfidence: o.pricing_confidence,
         photos: o.photos,
         expiresAt: o.expires_at,
         createdAt: o.created_at,

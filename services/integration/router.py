@@ -64,6 +64,15 @@ class PriceRequest(BaseModel):
     condition: str
 
 
+class ComparableSale(BaseModel):
+    source: str
+    title: str
+    price: float
+    sold_date: Optional[str] = None
+    condition: str
+    url: Optional[str] = None
+
+
 class PricingResult(BaseModel):
     fmv: float
     fmv_confidence: int
@@ -73,6 +82,9 @@ class PricingResult(BaseModel):
     category_margin: float
     data_quality: str
     range: Dict[str, float]
+    pricing_confidence: Optional[int] = None
+    comparable_sales: List[ComparableSale] = []
+    confidence_factors: Optional[Dict] = None
 
 
 @router.post("/identify", response_model=VisionResult)
@@ -186,11 +198,13 @@ async def calculate_price(request: PriceRequest):
             condition=request.condition
         )
 
-        # Step 2: Calculate offer
+        # Step 2: Calculate offer with pricing confidence and comparable sales
         offer_result = offer_engine.calculate_offer(
             fmv=fmv_result.fmv,
             condition=request.condition,
-            category=request.category
+            category=request.category,
+            pricing_confidence=fmv_result.confidence,
+            comparable_sales=fmv_result.comparable_sales
         )
 
         # Step 3: Combine results
@@ -198,6 +212,19 @@ async def calculate_price(request: PriceRequest):
             offer_result["offer_amount"] / fmv_result.fmv
             if fmv_result.fmv > 0 else 0
         )
+
+        # Map comparable sales to expected format
+        comparable_sales_mapped = [
+            ComparableSale(
+                source=comp.source,
+                title=comp.title,
+                price=comp.price,
+                sold_date=comp.sold_date.isoformat() if comp.sold_date else None,
+                condition=comp.condition,
+                url=comp.url
+            )
+            for comp in fmv_result.comparable_sales
+        ]
 
         return PricingResult(
             fmv=fmv_result.fmv,
@@ -207,7 +234,10 @@ async def calculate_price(request: PriceRequest):
             condition_multiplier=offer_result["base_calculation"]["condition_multiplier"],
             category_margin=offer_result["base_calculation"]["category_margin"],
             data_quality=fmv_result.data_quality,
-            range=fmv_result.range
+            range=fmv_result.range,
+            pricing_confidence=fmv_result.confidence,
+            comparable_sales=comparable_sales_mapped,
+            confidence_factors=fmv_result.confidence_factors
         )
 
     except Exception as e:

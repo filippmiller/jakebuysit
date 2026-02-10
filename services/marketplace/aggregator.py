@@ -79,9 +79,23 @@ class MarketplaceAggregator:
             median_price=stats.median
         )
 
+        # Convert stats to dict and add listings
+        stats_dict = stats.dict()
+        stats_dict["listings"] = [
+            {
+                "title": l.title,
+                "price": l.price,
+                "condition": l.condition,
+                "sold_date": l.sold_date,
+                "source": l.source,
+                "url": l.url
+            }
+            for l in filtered_listings
+        ]
+
         return {
             "listings": filtered_listings,
-            "stats": stats,
+            "stats": stats_dict,
             "sources_checked": ["ebay"],  # Update when adding more sources
             "cache_hit": False
         }

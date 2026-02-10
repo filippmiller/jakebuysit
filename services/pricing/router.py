@@ -93,6 +93,10 @@ async def calculate_offer(request: OfferRequest):
     **Safety Limits:**
     - Minimum: $5.00
     - Maximum: Category-specific (e.g., $2,000 for electronics)
+
+    **Includes:**
+    - Pricing confidence percentage from FMV calculation
+    - 3-5 comparable sales with source attribution
     """
     try:
         logger.info(
@@ -109,7 +113,7 @@ async def calculate_offer(request: OfferRequest):
                 detail="FMV must be greater than 0"
             )
 
-        # Calculate offer
+        # Calculate offer (will receive pricing_confidence and comparable_sales if available)
         result = offer_engine.calculate_offer(
             fmv=request.fmv,
             condition=request.condition,
@@ -118,8 +122,9 @@ async def calculate_offer(request: OfferRequest):
         )
 
         # Calculate confidence for this offer
-        # (Simplified - in production would use full confidence scoring)
-        confidence = 85  # Default high confidence if we got this far
+        # Use pricing_confidence if available, otherwise default
+        pricing_confidence = result.get("pricing_confidence")
+        confidence = pricing_confidence if pricing_confidence is not None else 85
 
         response = OfferResponse(
             **result,

@@ -66,6 +66,15 @@ CREATE TABLE offers (
   offer_amount DECIMAL(10,2) NOT NULL,
   offer_to_market_ratio FLOAT,
 
+  -- Condition assessment (from vision AI)
+  condition_grade VARCHAR(20), -- 'Excellent', 'Good', 'Fair', 'Poor'
+  condition_notes TEXT, -- Detailed defect descriptions
+
+  -- Pricing confidence and comparables
+  pricing_confidence INTEGER CHECK (pricing_confidence >= 0 AND pricing_confidence <= 100),
+  confidence_explanation TEXT, -- Explanation of confidence score
+  comparable_sales JSONB DEFAULT '[]'::jsonb, -- [{ source, price, date, url, title }]
+
   -- Jake personality
   jake_voice_url TEXT,
   jake_script TEXT,
@@ -91,6 +100,8 @@ CREATE TABLE offers (
 CREATE INDEX idx_offers_user_status ON offers(user_id, status);
 CREATE INDEX idx_offers_status_created ON offers(status, created_at);
 CREATE INDEX idx_offers_escalated ON offers(escalated, created_at);
+CREATE INDEX idx_offers_condition_grade ON offers(condition_grade) WHERE condition_grade IS NOT NULL;
+CREATE INDEX idx_offers_pricing_confidence ON offers(pricing_confidence) WHERE pricing_confidence IS NOT NULL;
 
 -- Shipments
 CREATE TABLE shipments (

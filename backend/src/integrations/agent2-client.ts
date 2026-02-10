@@ -35,6 +35,15 @@ export interface MarketplaceResult {
   cache_hit: boolean;
 }
 
+export interface ComparableSale {
+  source: string;
+  title: string;
+  price: number;
+  sold_date?: string;
+  condition: string;
+  url?: string;
+}
+
 export interface PricingResult {
   fmv: number;
   fmv_confidence: number;
@@ -44,6 +53,19 @@ export interface PricingResult {
   category_margin: number;
   data_quality: string;
   range: { low: number; high: number };
+  pricing_confidence?: number;
+  comparable_sales?: ComparableSale[];
+  confidence_factors?: {
+    score: number;
+    data_points: number;
+    data_availability: string;
+    recency_score: number;
+    recency_quality: string;
+    price_variance: string;
+    coefficient_of_variation?: number;
+    category_coverage: string;
+    explanation: string;
+  };
 }
 
 async function agent2Fetch<T>(path: string, body: Record<string, unknown>): Promise<T> {

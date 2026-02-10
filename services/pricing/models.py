@@ -2,7 +2,18 @@
 Pydantic models for pricing service.
 """
 from pydantic import BaseModel, Field
-from typing import Dict, Optional
+from typing import Dict, Optional, List
+from datetime import datetime
+
+
+class ComparableSale(BaseModel):
+    """Individual comparable sale for pricing reference."""
+    source: str = Field(..., description="Source marketplace (ebay, facebook, manual)")
+    title: str = Field(..., description="Listing title")
+    price: float = Field(..., description="Sold price in USD")
+    sold_date: Optional[datetime] = Field(None, description="Date item was sold")
+    condition: str = Field(..., description="Item condition")
+    url: Optional[str] = Field(None, description="Link to listing")
 
 
 class FMVRequest(BaseModel):
@@ -19,6 +30,14 @@ class FMVResponse(BaseModel):
     data_quality: str = Field(..., description="High/Medium/Low")
     sources: Dict = Field(default_factory=dict, description="Breakdown by source")
     range: Dict[str, float] = Field(..., description="Price range (low, high)")
+    comparable_sales: List[ComparableSale] = Field(
+        default_factory=list,
+        description="3-5 comparable sales used in pricing"
+    )
+    confidence_factors: Dict = Field(
+        default_factory=dict,
+        description="Breakdown of confidence score factors"
+    )
 
     class Config:
         json_schema_extra = {
@@ -31,7 +50,24 @@ class FMVResponse(BaseModel):
                     "amazon_used": {"avg": 125},
                     "google_shopping": {"avg": 122}
                 },
-                "range": {"low": 95, "high": 140}
+                "range": {"low": 95, "high": 140},
+                "comparable_sales": [
+                    {
+                        "source": "ebay",
+                        "title": "Apple AirPods Pro 2nd Gen",
+                        "price": 118.50,
+                        "sold_date": "2026-02-08T14:30:00Z",
+                        "condition": "Good",
+                        "url": "https://ebay.com/itm/12345"
+                    }
+                ],
+                "confidence_factors": {
+                    "data_points": 312,
+                    "recency_score": 95,
+                    "price_variance": "low",
+                    "category_coverage": "high",
+                    "explanation": "High confidence: 312 recent sales, low price variance (12%), common item category"
+                }
             }
         }
 
@@ -52,6 +88,11 @@ class OfferResponse(BaseModel):
     adjustments: Dict = Field(default_factory=dict, description="Dynamic adjustments applied")
     expires_at: Optional[str] = None
     confidence: int = Field(..., ge=0, le=100)
+    pricing_confidence: Optional[int] = Field(None, ge=0, le=100, description="Confidence in pricing data")
+    comparable_sales: List[ComparableSale] = Field(
+        default_factory=list,
+        description="Comparable sales from FMV calculation"
+    )
 
     class Config:
         json_schema_extra = {

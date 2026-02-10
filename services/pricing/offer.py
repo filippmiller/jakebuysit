@@ -42,7 +42,9 @@ class OfferEngine:
         condition: str,
         category: str,
         inventory_count: int = 0,
-        user_trust_score: float = 1.0
+        user_trust_score: float = 1.0,
+        pricing_confidence: int = None,
+        comparable_sales: list = None
     ) -> Dict:
         """
         Calculate purchase offer.
@@ -56,6 +58,8 @@ class OfferEngine:
             category: Product category
             inventory_count: Current inventory of this item
             user_trust_score: User trust score (0.0-1.5)
+            pricing_confidence: Confidence score from FMV calculation (0-100)
+            comparable_sales: List of comparable sales from FMV
 
         Returns:
             Dict with offer breakdown
@@ -106,7 +110,9 @@ class OfferEngine:
                 "base_offer": round(base_offer, 2)
             },
             "adjustments": adjustments,
-            "expires_at": expires_at
+            "expires_at": expires_at,
+            "pricing_confidence": pricing_confidence,
+            "comparable_sales": comparable_sales or []
         }
 
         logger.info(

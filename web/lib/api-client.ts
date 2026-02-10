@@ -2,6 +2,8 @@
  * API Client for JakeBuysIt Backend
  */
 
+import { adaptOfferData } from "./offer-data-adapter";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export interface OfferSubmission {
@@ -15,18 +17,40 @@ export interface OfferResponse {
   status: "processing" | "completed" | "failed";
 }
 
+export interface ComparableSale {
+  source: string;
+  title: string;
+  price: number;
+  soldDate?: string;
+  condition: string;
+  url?: string;
+}
+
+export interface ConfidenceFactors {
+  dataPoints: number;
+  recencyScore: number;
+  priceVariance: string;
+  categoryCoverage: string;
+  explanation: string;
+}
+
 export interface OfferDetails {
   id: string;
   itemName: string;
   brand?: string;
   model?: string;
   condition: string;
+  conditionGrade?: string;
+  conditionNotes?: string;
   category: string;
   jakePrice: number;
   marketAvg: number;
   marketRange: { min: number; max: number };
   comparablesCount: number;
+  comparableSales?: ComparableSale[];
   confidence: number;
+  confidenceFactors?: ConfidenceFactors;
+  pricingConfidence?: number;
   jakeVoiceUrl: string;
   jakeScript: string;
   expiresAt: string;
@@ -155,7 +179,8 @@ class APIClient {
       throw new Error("Failed to fetch offer");
     }
 
-    return response.json();
+    const backendData = await response.json();
+    return adaptOfferData(backendData);
   }
 
   /**

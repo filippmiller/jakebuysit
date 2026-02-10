@@ -86,6 +86,9 @@ export const offerOrchestrator = {
     damage: string[];
     confidence: number;
     identifiers: Record<string, string>;
+    // New fields from Phase 1 enhancements
+    conditionGrade?: string; // 'Excellent', 'Good', 'Fair', 'Poor'
+    conditionNotes?: string; // Detailed defect descriptions
   }): Promise<void> {
     // Update offer with vision data
     await db.update('offers', { id: offerId }, {
@@ -99,6 +102,9 @@ export const offerOrchestrator = {
       ai_identification: JSON.stringify(visionResult),
       ai_confidence: visionResult.confidence,
       ai_model_used: 'claude-3-5-sonnet',
+      // Store condition assessment from vision AI
+      condition_grade: visionResult.conditionGrade || null,
+      condition_notes: visionResult.conditionNotes || null,
     });
 
     // Check if confidence is too low — escalate
@@ -174,6 +180,21 @@ export const offerOrchestrator = {
     condition_multiplier: number;
     category_margin: number;
     data_quality: string;
+    // New fields from Phase 1 enhancements
+    pricing_confidence?: number; // 0-100 confidence score
+    comparable_sales?: Array<{
+      source: string;
+      price: number;
+      sold_date?: string;
+      url?: string;
+      title?: string;
+      condition: string;
+    }>;
+    confidence_factors?: {
+      score: number;
+      data_points: number;
+      explanation: string;
+    };
   }): Promise<void> {
     // Update offer with pricing
     await db.update('offers', { id: offerId }, {
@@ -183,6 +204,11 @@ export const offerOrchestrator = {
       offer_to_market_ratio: pricingResult.offer_to_market_ratio,
       condition_multiplier: pricingResult.condition_multiplier,
       category_margin: pricingResult.category_margin,
+      // Store pricing confidence and comparables
+      pricing_confidence: pricingResult.pricing_confidence || null,
+      // PostgreSQL JSONB accepts JavaScript objects directly via pg driver
+      comparable_sales: pricingResult.comparable_sales ? JSON.stringify(pricingResult.comparable_sales) : JSON.stringify([]),
+      confidence_explanation: pricingResult.confidence_factors?.explanation || null,
     });
 
     // High value offers get escalated for human review

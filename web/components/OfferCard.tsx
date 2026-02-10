@@ -5,8 +5,12 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Clock, TrendingUp, Package, ChevronRight } from "lucide-react";
 import { JakeVoice } from "./JakeVoice";
 import { JakeCharacter } from "./JakeCharacter";
+import { ConditionBadge } from "./ConditionBadge";
+import { ConfidenceIndicator } from "./ConfidenceIndicator";
+import { ComparableSalesTable } from "./ComparableSalesTable";
 import { formatCurrency, formatTimeRemaining } from "@/lib/utils";
 import { getJakeStateForOffer } from "@/lib/jake-scripts";
+import type { ComparableSale } from "@/lib/api-client";
 
 interface OfferCardProps {
   offer: {
@@ -15,12 +19,23 @@ interface OfferCardProps {
     brand?: string;
     model?: string;
     condition: string;
+    conditionGrade?: string;
+    conditionNotes?: string;
     category: string;
     jakePrice: number;
     marketAvg: number;
     marketRange: { min: number; max: number };
     comparablesCount: number;
+    comparableSales?: ComparableSale[];
     confidence: number;
+    confidenceFactors?: {
+      dataPoints?: number;
+      recencyScore?: number;
+      priceVariance?: string;
+      categoryCoverage?: string;
+      explanation?: string;
+    };
+    pricingConfidence?: number;
     jakeVoiceUrl: string;
     jakeScript: string;
     expiresAt: string;
@@ -133,10 +148,10 @@ export function OfferCard({
       {/* Item Identification */}
       <div className="bg-white/[0.07] backdrop-blur-sm border border-white/[0.12] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] p-6 mb-4">
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-[#f5f0e8] mb-2">
+          <h2 className="text-3xl font-bold text-[#f5f0e8] mb-3">
             {offer.itemName}
           </h2>
-          <div className="flex justify-center gap-2 text-sm">
+          <div className="flex justify-center gap-2 text-sm flex-wrap">
             {offer.brand && (
               <span className="px-3 py-1 bg-white/[0.08] border border-white/[0.1] rounded-full text-[#c3bbad]">
                 {offer.brand}
@@ -147,10 +162,16 @@ export function OfferCard({
                 {offer.model}
               </span>
             )}
-            <span className="px-3 py-1 bg-white/[0.08] border border-white/[0.1] rounded-full text-[#c3bbad]">
-              {offer.condition}
-            </span>
+            <ConditionBadge
+              condition={offer.conditionGrade || offer.condition}
+              size="md"
+            />
           </div>
+          {offer.conditionNotes && (
+            <p className="mt-3 text-sm text-[#a89d8a] italic">
+              {offer.conditionNotes}
+            </p>
+          )}
         </div>
 
         {/* Jake's Price */}
@@ -162,19 +183,12 @@ export function OfferCard({
           <p className="text-sm text-[#706557] mt-2">Cash, right now</p>
         </div>
 
-        {/* Confidence Indicator */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="flex-1 h-2 bg-white/[0.08] rounded-full overflow-hidden max-w-xs">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${offer.confidence * 100}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
-            />
-          </div>
-          <span className="text-sm text-[#a89d8a]">
-            {Math.round(offer.confidence * 100)}% confident
-          </span>
+        {/* Enhanced Confidence Indicator */}
+        <div className="mb-6">
+          <ConfidenceIndicator
+            confidence={Math.round((offer.pricingConfidence ?? offer.confidence) * 100)}
+            confidenceFactors={offer.confidenceFactors}
+          />
         </div>
 
         {/* Market Context */}
@@ -200,29 +214,37 @@ export function OfferCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="mb-4 p-4 bg-white/[0.04] border border-white/[0.08] rounded-lg"
+            className="mb-4 space-y-4"
           >
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-sm text-[#706557] mb-1">Market Avg</p>
-                <p className="text-xl font-bold text-[#f5f0e8]">
-                  {formatCurrency(offer.marketAvg)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-[#706557] mb-1">Range</p>
-                <p className="text-xl font-bold text-[#f5f0e8]">
-                  {formatCurrency(offer.marketRange.min)} -{" "}
-                  {formatCurrency(offer.marketRange.max)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-[#706557] mb-1">Comparables</p>
-                <p className="text-xl font-bold text-[#f5f0e8]">
-                  {offer.comparablesCount}
-                </p>
+            {/* Market Stats */}
+            <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-lg">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-[#706557] mb-1">Market Avg</p>
+                  <p className="text-xl font-bold text-[#f5f0e8]">
+                    {formatCurrency(offer.marketAvg)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#706557] mb-1">Range</p>
+                  <p className="text-lg font-bold text-[#f5f0e8]">
+                    {formatCurrency(offer.marketRange.min)} -{" "}
+                    {formatCurrency(offer.marketRange.max)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#706557] mb-1">Sales Found</p>
+                  <p className="text-xl font-bold text-[#f5f0e8]">
+                    {offer.comparablesCount}
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Comparable Sales Table */}
+            {offer.comparableSales && offer.comparableSales.length > 0 && (
+              <ComparableSalesTable sales={offer.comparableSales} />
+            )}
           </motion.div>
         )}
 
@@ -241,6 +263,25 @@ export function OfferCard({
           autoPlay
           className="mb-6"
         />
+
+        {/* Trust Signals */}
+        <div className="mb-6 p-4 bg-gradient-to-br from-amber-500/[0.08] to-amber-400/[0.04] border border-amber-400/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <Package className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-amber-300">
+                Jake's Guarantee
+              </h4>
+              <ul className="text-xs text-[#c3bbad] space-y-1">
+                <li>✓ Free shipping label included</li>
+                <li>✓ Payment within 24 hours of receiving your item</li>
+                <li>✓ No hidden fees or surprises</li>
+              </ul>
+            </div>
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="grid grid-cols-2 gap-4">
