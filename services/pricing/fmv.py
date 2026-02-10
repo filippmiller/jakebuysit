@@ -1,9 +1,14 @@
 """
 Fair Market Value (FMV) calculation engine.
 Combines weighted data from multiple marketplace sources.
+
+Features:
+- Uses live marketplace data when available
+- Falls back to cached data on scraper failures
+- Tracks data freshness (live/cached/stale)
 """
 import structlog
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime, timezone, timedelta
 from .models import FMVResponse, ComparableSale
 
@@ -26,7 +31,8 @@ class FMVEngine:
         self,
         marketplace_stats: Dict,
         category: str,
-        condition: str
+        condition: str,
+        data_freshness: Optional[str] = None
     ) -> FMVResponse:
         """
         Calculate Fair Market Value from marketplace data.
@@ -35,15 +41,22 @@ class FMVEngine:
             marketplace_stats: Statistics from marketplace aggregator
             category: Product category
             condition: Item condition
+            data_freshness: Data freshness indicator ("live", "cached", "stale")
 
         Returns:
-            FMVResponse with calculated FMV and confidence
+            FMVResponse with calculated FMV, confidence, and data freshness
+
+        Note:
+            - Live data: Real-time scraping from marketplaces
+            - Cached data: Recent data from cache (< 1 hour old)
+            - Stale data: Older cached data or scraper failures
         """
         logger.info(
             "calculating_fmv",
             category=category,
             condition=condition,
-            listing_count=marketplace_stats.get("count", 0)
+            listing_count=marketplace_stats.get("count", 0),
+            data_freshness=data_freshness or "unknown"
         )
 
         # Extract eBay data (primary source)
@@ -112,11 +125,26 @@ class FMVEngine:
             # TODO: Add amazon_used, google_shopping when implemented
         }
 
+        # Determine final data freshness
+        final_freshness = data_freshness or "unknown"
+
+        # Adjust confidence based on data freshness
+        if final_freshness == "live":
+            # No adjustment for live data
+            pass
+        elif final_freshness == "cached":
+            # Slight penalty for cached data
+            confidence = max(0, confidence - 5)
+        elif final_freshness == "stale":
+            # Significant penalty for stale data
+            confidence = max(0, confidence - 15)
+
         logger.info(
             "fmv_calculated",
             fmv=fmv,
             confidence=confidence,
             data_quality=data_quality,
+            data_freshness=final_freshness,
             listing_count=listing_count,
             comparable_sales_count=len(comparable_sales)
         )
@@ -128,7 +156,8 @@ class FMVEngine:
             sources=sources,
             range=price_range,
             comparable_sales=comparable_sales,
-            confidence_factors=confidence_factors
+            confidence_factors=confidence_factors,
+            data_freshness=final_freshness
         )
 
     def _assess_data_quality(self, listing_count: int) -> str:

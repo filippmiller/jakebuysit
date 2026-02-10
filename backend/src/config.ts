@@ -39,6 +39,7 @@ export const config = {
   agents: {
     agent2Url: process.env.AGENT2_API_URL || 'http://localhost:8000',
     agent3Url: process.env.AGENT3_API_URL || 'http://localhost:3002',
+    recommendationsUrl: process.env.RECOMMENDATIONS_API_URL || 'http://localhost:8005',
   },
   shipping: {
     easypost: {
@@ -77,5 +78,12 @@ export const config = {
     minOfferAmount: parseFloat(process.env.MIN_OFFER_AMOUNT || '5'),
     maxOfferAmount: parseFloat(process.env.MAX_OFFER_AMOUNT || '2000'),
     offerExpiryHours: parseInt(process.env.OFFER_EXPIRY_HOURS || '24', 10),
+  },
+  ebay: {
+    clientId: process.env.EBAY_CLIENT_ID || '',
+    clientSecret: process.env.EBAY_CLIENT_SECRET || '',
+    redirectUri: process.env.EBAY_REDIRECT_URI || 'http://localhost:3001/api/v1/integrations/ebay/callback',
+    sandbox: process.env.EBAY_SANDBOX === 'true',
+    paypalEmail: process.env.EBAY_PAYPAL_EMAIL,
   },
 };

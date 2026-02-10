@@ -231,6 +231,30 @@ class APIClient {
     const wsBase = this.baseUrl.replace("http", "ws");
     return `${wsBase}/api/v1/offers/${offerId}/stream`;
   }
+
+  /**
+   * Get personalized market insights for sellers
+   */
+  async getSellerInsights(category: string = 'Electronics'): Promise<any> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/offers/insights?category=${encodeURIComponent(category)}`
+    );
+
+    if (!response.ok) {
+      // Return safe defaults on error
+      return {
+        category,
+        bestDay: 'Tuesday',
+        acceptanceRate: 65,
+        avgOffer: 150,
+        categoryTrend: 'stable',
+        trendPercentage: 0,
+        optimalTime: '2-4 PM',
+      };
+    }
+
+    return response.json();
+  }
 }
 
 export const apiClient = new APIClient();

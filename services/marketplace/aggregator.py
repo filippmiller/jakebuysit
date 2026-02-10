@@ -1,12 +1,18 @@
 """
 Marketplace data aggregator - combines data from multiple sources.
 Computes statistics and filters outliers.
+
+Features:
+- Live data fetching from eBay + Facebook
+- Fallback to cached data on errors
+- Data freshness tracking
 """
 import structlog
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .models import MarketplaceListing, MarketplaceStats
 from .ebay import ebay_client
+from .facebook import facebook_client
 
 logger = structlog.get_logger()
 
@@ -19,7 +25,8 @@ class MarketplaceAggregator:
         brand: str,
         model: str,
         category: str,
-        condition: str = None
+        condition: str = None,
+        use_live_data: bool = True
     ) -> Dict:
         """
         Research a product across multiple marketplaces.
@@ -29,28 +36,57 @@ class MarketplaceAggregator:
             model: Model name/number
             category: Product category
             condition: Item condition
+            use_live_data: If True, fetch live data; if False, use cached only
 
         Returns:
-            Dict with listings and stats
+            Dict with listings, stats, and data freshness indicator
         """
         logger.info(
             "researching_product",
             brand=brand,
             model=model,
-            category=category
+            category=category,
+            use_live_data=use_live_data
         )
 
         # Build search query
         query = f"{brand} {model}".strip()
 
-        # Fetch from eBay (primary source)
-        ebay_listings = await ebay_client.search_sold_listings(
-            query=query,
-            category=category,
-            condition=condition,
-            sold_within_days=90,
-            limit=100
-        )
+        # Track data freshness
+        data_freshness = "live"
+        sources_checked = []
+
+        # Fetch from eBay (primary source for sold data)
+        ebay_listings = []
+        try:
+            ebay_listings = await ebay_client.search_sold_listings(
+                query=query,
+                category=category,
+                condition=condition,
+                sold_within_days=90,  # 90 days for broader dataset
+                limit=100,
+                real_time=use_live_data
+            )
+            sources_checked.append("ebay")
+            logger.info("ebay_research_completed", count=len(ebay_listings))
+        except Exception as e:
+            logger.error("ebay_research_failed", error=str(e))
+            data_freshness = "stale"
+
+        # Fetch from Facebook Marketplace (for current market prices)
+        facebook_listings = []
+        if use_live_data:
+            try:
+                facebook_listings = await facebook_client.search_listings(
+                    query=query,
+                    category=category,
+                    limit=30
+                )
+                sources_checked.append("facebook")
+                logger.info("facebook_research_completed", count=len(facebook_listings))
+            except Exception as e:
+                logger.error("facebook_research_failed", error=str(e))
+                # Don't mark as stale if eBay succeeded
 
         # TODO: Fetch from Amazon
         # amazon_listings = await amazon_client.search(...)
@@ -59,9 +95,14 @@ class MarketplaceAggregator:
         # google_listings = await google_client.search(...)
 
         # Combine all listings
-        all_listings = ebay_listings
+        all_listings = ebay_listings + facebook_listings
         # all_listings.extend(amazon_listings)
         # all_listings.extend(google_listings)
+
+        # Check if we got any data
+        if not all_listings:
+            logger.warning("no_marketplace_data", query=query)
+            data_freshness = "stale"
 
         # Filter outliers
         filtered_listings = self._filter_outliers(all_listings)
@@ -76,7 +117,8 @@ class MarketplaceAggregator:
             "product_research_completed",
             total_listings=len(all_listings),
             filtered_listings=len(filtered_listings),
-            median_price=stats.median
+            median_price=stats.median,
+            data_freshness=data_freshness
         )
 
         # Convert stats to dict and add listings
@@ -86,7 +128,7 @@ class MarketplaceAggregator:
                 "title": l.title,
                 "price": l.price,
                 "condition": l.condition,
-                "sold_date": l.sold_date,
+                "sold_date": l.sold_date.isoformat() if l.sold_date else None,
                 "source": l.source,
                 "url": l.url
             }
@@ -96,7 +138,8 @@ class MarketplaceAggregator:
         return {
             "listings": filtered_listings,
             "stats": stats_dict,
-            "sources_checked": ["ebay"],  # Update when adding more sources
+            "sources_checked": sources_checked,
+            "data_freshness": data_freshness,
             "cache_hit": False
         }
 

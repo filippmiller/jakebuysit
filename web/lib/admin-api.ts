@@ -89,6 +89,14 @@ export const adminApi = {
   // Analytics
   getAiAccuracy: () => request<any>("/analytics/ai-accuracy"),
   getRevenue: () => request<any>("/analytics/revenue"),
+  getTrends: (params?: { days?: number; category?: string }) => request<any>(`/analytics/trends${qs(params || {})}`),
+  getCategoryInsights: () => request<any>("/analytics/category-insights"),
+  getBestTimeToSell: () => request<any>("/analytics/best-time-to-sell"),
+  getPriceDistribution: (category: string) => request<any>(`/analytics/price-distribution/${encodeURIComponent(category)}`),
+  exportAnalytics: (type: string, params?: Record<string, any>) => {
+    const url = `${ADMIN_PREFIX}/analytics/export${qs({ type, ...params })}`;
+    window.open(url, '_blank');
+  },
 
   // Verifications
   getVerifications: (params?: Record<string, any>) => request<any>(`/verifications${qs(params || {})}`),

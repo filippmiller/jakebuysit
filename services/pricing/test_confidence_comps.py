@@ -4,9 +4,14 @@ Test script for Phase 1 pricing enhancements:
 - Comparable sales
 - Confidence factors
 """
-import asyncio
-from fmv import fmv_engine
-from offer import offer_engine
+import sys
+from pathlib import Path
+
+# Add parent directory to path so we can import from services
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from pricing.fmv import fmv_engine
+from pricing.offer import offer_engine
 
 
 def test_confidence_calculation():

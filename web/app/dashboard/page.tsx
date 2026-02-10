@@ -7,6 +7,8 @@ import { JakeCharacter } from "@/components/JakeCharacter";
 import { JakeState, jakeVoice } from "@/lib/jake-scripts";
 import { apiClient, DashboardData } from "@/lib/api-client";
 import { formatCurrency, formatTimeRemaining } from "@/lib/utils";
+import { RecommendationsSection } from "@/components/RecommendationsSection";
+import { SellerInsights } from "@/components/analytics/SellerInsights";
 import {
   Package,
   DollarSign,
@@ -23,12 +25,14 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<any>(null);
 
   // Mock user ID - in production would come from auth
   const userId = "mock-user-123";
 
   useEffect(() => {
     loadDashboard();
+    loadInsights();
   }, []);
 
   const loadDashboard = async () => {
@@ -43,6 +47,16 @@ export default function DashboardPage() {
       setData(getMockDashboardData());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInsights = async () => {
+    try {
+      const category = 'Electronics'; // Could be derived from user's recent offers
+      const insightsData = await apiClient.getSellerInsights(category);
+      setInsights(insightsData);
+    } catch (err) {
+      console.error("Failed to load insights:", err);
     }
   };
 
@@ -205,6 +219,17 @@ export default function DashboardPage() {
           </Link>
         </motion.div>
 
+        {/* Seller Insights */}
+        {insights && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <SellerInsights insights={insights} userCategory={insights.category} />
+          </motion.div>
+        )}
+
         {/* Active Offers */}
         {data.activeOffers.length > 0 && (
           <section className="mb-8">
@@ -292,6 +317,16 @@ export default function DashboardPage() {
             </div>
           </section>
         )}
+
+        {/* Trending Now Section */}
+        <section className="mb-8">
+          <RecommendationsSection
+            type="trending"
+            title="🔥 Trending Now"
+            limit={5}
+            className="mb-8"
+          />
+        </section>
 
         {/* Empty State */}
         {data.activeOffers.length === 0 &&

@@ -16,6 +16,7 @@ import { webhooksRoutes } from './api/routes/webhooks.js';
 import { adminRoutes } from './api/routes/admin.js';
 import { uploadRoutes } from './api/routes/uploads.js';
 import { offerStreamRoutes } from './api/routes/offer-stream.js';
+import { integrationRoutes } from './api/routes/integrations.js';
 import { logger } from './utils/logger.js';
 
 const fastify = Fastify({
@@ -89,6 +90,7 @@ fastify.register(shipmentsRoutes, { prefix: '/api/v1/shipments' });
 fastify.register(webhooksRoutes, { prefix: '/webhooks' });
 fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 fastify.register(uploadRoutes, { prefix: '/api/v1/uploads' });
+fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
 
 // Error handler
 fastify.setErrorHandler((error: any, request, reply) => {

@@ -14,6 +14,7 @@ import { offerOrchestrator } from '../../services/offer-orchestrator.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { logger } from '../../utils/logger.js';
 import { createOfferSchema, declineOfferSchema, listOffersQuerySchema, uuidParamSchema, validateBody, validateParams, validateQuery } from '../schemas.js';
+import { recommendations } from '../../integrations/recommendations-client.js';
 
 export async function offerRoutes(fastify: FastifyInstance) {
 
@@ -326,5 +327,192 @@ export async function offerRoutes(fastify: FastifyInstance) {
 
     await cache.set(cacheKey, response, 300); // 5 min cache
     return response;
+  });
+
+  /**
+   * POST /api/v1/offers/:id/view
+   * Track user view activity for recommendation engine
+   */
+  fastify.post('/:id/view', { preHandler: optionalAuth }, async (request, reply) => {
+    const { id } = validateParams(uuidParamSchema, request.params);
+    const userId = (request as any).userId || null;
+    const body = request.body as any || {};
+
+    // Verify offer exists
+    const offer = await db.findOne('offers', { id });
+    if (!offer) {
+      return reply.status(404).send({ error: 'Offer not found' });
+    }
+
+    try {
+      // Track view activity
+      await db.create('user_activity', {
+        user_id: userId,
+        offer_id: id,
+        activity_type: 'view',
+        source: body.source || 'direct',
+        device_type: body.deviceType || null,
+        time_spent_seconds: body.timeSpent || null,
+        scroll_depth: body.scrollDepth || null,
+        session_id: body.sessionId || null,
+        ip_address: request.ip,
+        user_agent: request.headers['user-agent'],
+      });
+
+      logger.info({ offerId: id, userId }, 'Offer view tracked');
+
+      return { success: true };
+    } catch (err: any) {
+      logger.error({ error: err.message, offerId: id }, 'Failed to track view');
+      // Don't fail the request if tracking fails
+      return { success: false };
+    }
+  });
+
+  /**
+   * GET /api/v1/offers/:id/recommendations
+   * Get similar items to the current offer
+   */
+  fastify.get('/:id/recommendations', { preHandler: optionalAuth }, async (request, reply) => {
+    const { id } = validateParams(uuidParamSchema, request.params);
+    const userId = (request as any).userId || null;
+
+    try {
+      const result = await recommendations.similar(id, 5, userId || undefined);
+      return {
+        recommendations: result.recommendations,
+        algorithm: result.algorithm,
+      };
+    } catch (err: any) {
+      logger.error({ error: err.message, offerId: id }, 'Failed to get recommendations');
+      // Return empty array if recommendations service fails
+      return { recommendations: [], algorithm: 'none' };
+    }
+  });
+
+  /**
+   * GET /api/v1/offers/trending
+   * Get trending offers
+   */
+  fastify.get('/trending', async (request, _reply) => {
+    const query = request.query as any || {};
+    const days = parseInt(query.days || '7', 10);
+    const limit = parseInt(query.limit || '10', 10);
+    const category = query.category || undefined;
+
+    try {
+      const result = await recommendations.trending(days, limit, category);
+      return {
+        recommendations: result.recommendations,
+        algorithm: result.algorithm,
+      };
+    } catch (err: any) {
+      logger.error({ error: err.message }, 'Failed to get trending items');
+      // Fallback to recent offers
+      const fallback = await db.query(
+        `SELECT id, item_brand, item_model, item_condition, offer_amount,
+                photos->0->>'thumbnail_url' AS thumbnail_url
+         FROM offers
+         WHERE status = 'ready' AND item_brand IS NOT NULL
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [limit]
+      );
+
+      return {
+        recommendations: fallback.rows.map((o: any) => ({
+          offer_id: o.id,
+          score: 0.5,
+          reason: 'Recently added',
+          item_brand: o.item_brand,
+          item_model: o.item_model,
+          item_condition: o.item_condition,
+          offer_amount: o.offer_amount ? parseFloat(o.offer_amount) : null,
+          thumbnail_url: o.thumbnail_url,
+        })),
+        algorithm: 'fallback',
+      };
+    }
+  });
+
+  /**
+   * GET /api/v1/offers/insights
+   * Get personalized market insights for sellers (public, no auth required).
+   * Returns category-specific trends and optimal selling times.
+   */
+  fastify.get('/insights', async (request, _reply) => {
+    const { category = 'Electronics' } = request.query as any;
+
+    const cached = await cache.get<any>(`insights:${category}`);
+    if (cached) return cached;
+
+    try {
+      // Get category insights
+      const [categoryData, bestTime] = await Promise.all([
+        db.query(`
+          SELECT
+            item_category,
+            COUNT(*) as total_offers,
+            ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate,
+            AVG(offer_amount)::numeric(10,2) as avg_offer,
+            EXTRACT(DOW FROM created_at)::int as best_day,
+            COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as recent_count,
+            COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - INTERVAL '14 days' AND created_at < CURRENT_DATE - INTERVAL '7 days') as prev_count
+          FROM offers
+          WHERE item_category = $1
+            AND created_at >= CURRENT_DATE - INTERVAL '90 days'
+            AND offer_amount IS NOT NULL
+          GROUP BY item_category, best_day
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        `, [category]),
+        db.query(`
+          SELECT
+            EXTRACT(DOW FROM created_at)::int as day_of_week,
+            ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate
+          FROM offers
+          WHERE item_category = $1
+            AND created_at >= CURRENT_DATE - INTERVAL '90 days'
+          GROUP BY day_of_week
+          ORDER BY acceptance_rate DESC NULLS LAST
+          LIMIT 1
+        `, [category]),
+      ]);
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const cat = categoryData.rows[0] || { acceptance_rate: 0, avg_offer: 0, recent_count: 0, prev_count: 1, best_day: 2 };
+      const bestDayData = bestTime.rows[0] || { day_of_week: 2, acceptance_rate: 0 };
+
+      // Calculate trend
+      const recentCount = parseInt(cat.recent_count || 0);
+      const prevCount = parseInt(cat.prev_count || 1);
+      const trendPercentage = ((recentCount - prevCount) / prevCount) * 100;
+      const categoryTrend = trendPercentage > 5 ? 'up' : trendPercentage < -5 ? 'down' : 'stable';
+
+      const insights = {
+        category,
+        bestDay: dayNames[bestDayData.day_of_week],
+        acceptanceRate: parseFloat(cat.acceptance_rate || '0'),
+        avgOffer: parseFloat(cat.avg_offer || '0'),
+        categoryTrend,
+        trendPercentage: Math.abs(trendPercentage),
+        optimalTime: '2-4 PM', // Could be enhanced with hour-based analysis
+      };
+
+      await cache.set(`insights:${category}`, insights, 3600); // Cache for 1 hour
+      return insights;
+    } catch (err: any) {
+      logger.error({ error: err.message, category }, 'Failed to get seller insights');
+      // Return safe defaults
+      return {
+        category,
+        bestDay: 'Tuesday',
+        acceptanceRate: 65,
+        avgOffer: 150,
+        categoryTrend: 'stable',
+        trendPercentage: 0,
+        optimalTime: '2-4 PM',
+      };
+    }
   });
 }

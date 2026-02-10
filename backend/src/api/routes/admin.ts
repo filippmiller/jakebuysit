@@ -984,6 +984,261 @@ export async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
+  /**
+   * GET /api/v1/admin/analytics/trends
+   * Market trends by category over time. Supports date range filtering.
+   */
+  fastify.get('/analytics/trends', { preHandler: requireAdmin }, async (request, _reply) => {
+    const { days = 30, category } = request.query as any;
+    const daysNum = Math.min(Math.max(parseInt(days), 7), 365);
+
+    const cached = await cache.get<any>(`admin:analytics:trends:${daysNum}:${category || 'all'}`);
+    if (cached) return cached;
+
+    const categoryFilter = category ? 'AND item_category = $2' : '';
+    const params = category ? [daysNum, category] : [daysNum];
+
+    const trends = await db.query(`
+      SELECT
+        DATE(created_at) as date,
+        item_category,
+        COUNT(*) as total_offers,
+        COUNT(*) FILTER (WHERE status = 'accepted') as accepted_count,
+        ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*), 0) * 100, 1) as acceptance_rate,
+        AVG(offer_amount)::numeric(10,2) as avg_offer,
+        STDDEV(offer_amount)::numeric(10,2) as price_volatility,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY offer_amount)::numeric(10,2) as median_offer,
+        AVG(EXTRACT(EPOCH FROM (accepted_at - created_at)) / 86400)::numeric(5,2) as avg_days_to_accept
+      FROM offers
+      WHERE created_at >= CURRENT_DATE - INTERVAL '1 day' * $1 ${categoryFilter}
+        AND offer_amount IS NOT NULL
+      GROUP BY DATE(created_at), item_category
+      ORDER BY date DESC, item_category
+    `, params);
+
+    const result = { trends: trends.rows, days: daysNum };
+    await cache.set(`admin:analytics:trends:${daysNum}:${category || 'all'}`, result, cache.ttl.analytics);
+    return result;
+  });
+
+  /**
+   * GET /api/v1/admin/analytics/category-insights
+   * Deep category performance analysis with acceptance rates and timing.
+   */
+  fastify.get('/analytics/category-insights', { preHandler: requireAdmin }, async (_request, _reply) => {
+    const cached = await cache.get<any>('admin:analytics:category-insights');
+    if (cached) return cached;
+
+    const insights = await db.query(`
+      SELECT
+        item_category,
+        COUNT(*) as total_offers,
+        COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+        COUNT(*) FILTER (WHERE status = 'declined') as declined,
+        ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate,
+        AVG(offer_amount)::numeric(10,2) as avg_offer,
+        MAX(offer_amount)::numeric(10,2) as max_offer,
+        MIN(offer_amount)::numeric(10,2) as min_offer,
+        STDDEV(offer_amount)::numeric(10,2) as volatility,
+        AVG(EXTRACT(EPOCH FROM (accepted_at - created_at)) / 86400)::numeric(5,2) as avg_days_to_accept,
+        AVG(ai_confidence)::numeric(5,2) as avg_ai_confidence,
+        COUNT(*) FILTER (WHERE escalated = true) as escalated_count,
+        SUM(CASE WHEN status = 'accepted' THEN offer_amount ELSE 0 END)::numeric(12,2) as total_revenue
+      FROM offers
+      WHERE item_category IS NOT NULL
+        AND created_at >= CURRENT_DATE - INTERVAL '90 days'
+      GROUP BY item_category
+      ORDER BY total_offers DESC
+    `);
+
+    const result = { insights: insights.rows };
+    await cache.set('admin:analytics:category-insights', result, cache.ttl.analytics);
+    return result;
+  });
+
+  /**
+   * GET /api/v1/admin/analytics/best-time-to-sell
+   * Optimal timing analysis - best days and hours for selling by category.
+   */
+  fastify.get('/analytics/best-time-to-sell', { preHandler: requireAdmin }, async (_request, _reply) => {
+    const cached = await cache.get<any>('admin:analytics:best-time');
+    if (cached) return cached;
+
+    const [byDayOfWeek, byHourOfDay, byCategory] = await Promise.all([
+      // Day of week analysis
+      db.query(`
+        SELECT
+          EXTRACT(DOW FROM created_at)::int as day_of_week,
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+          ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate,
+          AVG(offer_amount)::numeric(10,2) as avg_offer
+        FROM offers
+        WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+        GROUP BY day_of_week
+        ORDER BY day_of_week
+      `),
+      // Hour of day analysis
+      db.query(`
+        SELECT
+          EXTRACT(HOUR FROM created_at)::int as hour,
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+          ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate
+        FROM offers
+        WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+        GROUP BY hour
+        ORDER BY hour
+      `),
+      // Best time by category
+      db.query(`
+        SELECT
+          item_category,
+          EXTRACT(DOW FROM created_at)::int as best_day,
+          COUNT(*) as offers,
+          ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*) FILTER (WHERE status IN ('accepted', 'declined')), 0) * 100, 1) as acceptance_rate
+        FROM offers
+        WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+          AND item_category IS NOT NULL
+        GROUP BY item_category, best_day
+        ORDER BY item_category, acceptance_rate DESC NULLS LAST
+      `),
+    ]);
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const byDayNamed = byDayOfWeek.rows.map(row => ({
+      ...row,
+      day_name: dayNames[row.day_of_week],
+    }));
+
+    const result = {
+      byDayOfWeek: byDayNamed,
+      byHourOfDay: byHourOfDay.rows,
+      byCategoryAndDay: byCategory.rows,
+    };
+
+    await cache.set('admin:analytics:best-time', result, cache.ttl.analytics);
+    return result;
+  });
+
+  /**
+   * GET /api/v1/admin/analytics/price-distribution/:category
+   * Price distribution histogram for a specific category.
+   */
+  fastify.get('/analytics/price-distribution/:category', { preHandler: requireAdmin }, async (request, _reply) => {
+    const { category } = request.params as any;
+
+    const cached = await cache.get<any>(`admin:analytics:price-dist:${category}`);
+    if (cached) return cached;
+
+    const distribution = await db.query(`
+      WITH price_stats AS (
+        SELECT
+          MIN(offer_amount) as min_price,
+          MAX(offer_amount) as max_price,
+          (MAX(offer_amount) - MIN(offer_amount)) / 10.0 as bucket_size
+        FROM offers
+        WHERE item_category = $1 AND offer_amount IS NOT NULL
+      ),
+      buckets AS (
+        SELECT
+          FLOOR((offer_amount - (SELECT min_price FROM price_stats)) / NULLIF((SELECT bucket_size FROM price_stats), 0))::int as bucket,
+          COUNT(*) as count,
+          AVG(offer_amount)::numeric(10,2) as avg_price
+        FROM offers
+        WHERE item_category = $1 AND offer_amount IS NOT NULL
+        GROUP BY bucket
+      )
+      SELECT
+        bucket,
+        count,
+        avg_price,
+        (bucket * (SELECT bucket_size FROM price_stats) + (SELECT min_price FROM price_stats))::numeric(10,2) as bucket_min,
+        ((bucket + 1) * (SELECT bucket_size FROM price_stats) + (SELECT min_price FROM price_stats))::numeric(10,2) as bucket_max
+      FROM buckets
+      ORDER BY bucket
+    `, [category]);
+
+    const stats = await db.query(`
+      SELECT
+        COUNT(*) as total_offers,
+        AVG(offer_amount)::numeric(10,2) as mean,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY offer_amount)::numeric(10,2) as median,
+        MODE() WITHIN GROUP (ORDER BY offer_amount)::numeric(10,2) as mode,
+        STDDEV(offer_amount)::numeric(10,2) as std_dev,
+        MIN(offer_amount)::numeric(10,2) as min,
+        MAX(offer_amount)::numeric(10,2) as max
+      FROM offers
+      WHERE item_category = $1 AND offer_amount IS NOT NULL
+    `, [category]);
+
+    const result = {
+      category,
+      distribution: distribution.rows,
+      stats: stats.rows[0],
+    };
+
+    await cache.set(`admin:analytics:price-dist:${category}`, result, cache.ttl.analytics);
+    return result;
+  });
+
+  /**
+   * GET /api/v1/admin/analytics/export
+   * Export analytics data as CSV.
+   */
+  fastify.get('/analytics/export', { preHandler: requireAdmin }, async (request, reply) => {
+    const { type, category, days = 30 } = request.query as any;
+
+    let data: any[] = [];
+    let filename = 'analytics-export.csv';
+
+    if (type === 'trends') {
+      const params = category ? [days, category] : [days];
+      const result = await db.query(`
+        SELECT
+          DATE(created_at) as date,
+          item_category,
+          COUNT(*) as total_offers,
+          COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
+          AVG(offer_amount)::numeric(10,2) as avg_offer
+        FROM offers
+        WHERE created_at >= CURRENT_DATE - INTERVAL '1 day' * $1 ${category ? 'AND item_category = $2' : ''}
+        GROUP BY DATE(created_at), item_category
+        ORDER BY date DESC, item_category
+      `, params);
+      data = result.rows;
+      filename = `trends-${category || 'all'}-${days}days.csv`;
+    } else if (type === 'category-insights') {
+      const result = await db.query(`
+        SELECT
+          item_category,
+          COUNT(*) as total,
+          ROUND(COUNT(*) FILTER (WHERE status = 'accepted')::numeric / NULLIF(COUNT(*), 0) * 100, 1) as acceptance_rate,
+          AVG(offer_amount)::numeric(10,2) as avg_offer
+        FROM offers
+        WHERE item_category IS NOT NULL
+        GROUP BY item_category
+        ORDER BY total DESC
+      `);
+      data = result.rows;
+      filename = 'category-insights.csv';
+    }
+
+    if (data.length === 0) {
+      return reply.status(400).send({ error: 'No data available for export' });
+    }
+
+    const headers = Object.keys(data[0]);
+    const csv = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => JSON.stringify(row[h] || '')).join(',')),
+    ].join('\n');
+
+    reply.header('Content-Type', 'text/csv');
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(csv);
+  });
+
   // ═══════════════════════════════════════════
   // VERIFICATIONS (WAREHOUSE)
   // ═══════════════════════════════════════════

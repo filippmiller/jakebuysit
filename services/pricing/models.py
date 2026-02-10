@@ -38,6 +38,10 @@ class FMVResponse(BaseModel):
         default_factory=dict,
         description="Breakdown of confidence score factors"
     )
+    data_freshness: Optional[str] = Field(
+        None,
+        description="Data freshness: 'live', 'cached', 'stale', or 'unknown'"
+    )
 
     class Config:
         json_schema_extra = {

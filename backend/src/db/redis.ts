@@ -111,5 +111,6 @@ export const cache = {
     offer: 120, // 2 minutes
     marketplace: 21600, // 6 hours
     config: 3600, // 1 hour
+    analytics: 3600, // 1 hour
   },
 };
