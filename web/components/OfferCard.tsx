@@ -40,6 +40,18 @@ interface OfferCardProps {
     jakeScript: string;
     expiresAt: string;
     estimatedProfit?: number; // Profit if sold at FMV
+    // Phase 4 Team 1: Enhanced metadata
+    serialNumber?: string;
+    productMetadata?: {
+      brand?: string;
+      model?: string;
+      variant?: string;
+      storage?: string;
+      color?: string;
+      year?: number;
+      generation?: string;
+      condition_specifics?: Record<string, any>;
+    };
   };
   onAccept: () => void;
   onDecline: () => void;
@@ -249,6 +261,51 @@ export function OfferCard({
                 </div>
               </div>
             </div>
+
+            {/* Product Details (Serial & Metadata) */}
+            {(offer.serialNumber || offer.productMetadata) && (
+              <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-lg">
+                <h4 className="text-sm font-semibold text-[#f5f0e8] mb-3">Product Details</h4>
+                <div className="space-y-2 text-sm">
+                  {offer.serialNumber && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Serial Number:</span>
+                      <span className="text-[#f5f0e8] font-mono">{offer.serialNumber}</span>
+                    </div>
+                  )}
+                  {offer.productMetadata?.variant && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Variant:</span>
+                      <span className="text-[#f5f0e8]">{offer.productMetadata.variant}</span>
+                    </div>
+                  )}
+                  {offer.productMetadata?.storage && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Storage:</span>
+                      <span className="text-[#f5f0e8]">{offer.productMetadata.storage}</span>
+                    </div>
+                  )}
+                  {offer.productMetadata?.color && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Color:</span>
+                      <span className="text-[#f5f0e8]">{offer.productMetadata.color}</span>
+                    </div>
+                  )}
+                  {offer.productMetadata?.year && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Year:</span>
+                      <span className="text-[#f5f0e8]">{offer.productMetadata.year}</span>
+                    </div>
+                  )}
+                  {offer.productMetadata?.generation && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#706557]">Generation:</span>
+                      <span className="text-[#f5f0e8]">{offer.productMetadata.generation}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Comparable Sales Table */}
             {offer.comparableSales && offer.comparableSales.length > 0 && (

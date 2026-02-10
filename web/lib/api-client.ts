@@ -34,6 +34,17 @@ export interface ConfidenceFactors {
   explanation: string;
 }
 
+export interface ProductMetadata {
+  brand?: string;
+  model?: string;
+  variant?: string;
+  storage?: string;
+  color?: string;
+  year?: number;
+  generation?: string;
+  condition_specifics?: Record<string, any>;
+}
+
 export interface OfferDetails {
   id: string;
   itemName: string;
@@ -56,6 +67,9 @@ export interface OfferDetails {
   expiresAt: string;
   animationState: string;
   seoTitle?: string;
+  // Phase 4 Team 1: Enhanced metadata
+  serialNumber?: string;
+  productMetadata?: ProductMetadata;
 }
 
 export interface AcceptOfferRequest {

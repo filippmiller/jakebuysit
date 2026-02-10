@@ -39,6 +39,18 @@ interface BackendOfferResponse {
   createdAt?: string;
   acceptedAt?: string;
   processingStage?: string;
+  // Phase 4 Team 1: Enhanced metadata
+  serialNumber?: string;
+  productMetadata?: {
+    brand?: string;
+    model?: string;
+    variant?: string;
+    storage?: string;
+    color?: string;
+    year?: number;
+    generation?: string;
+    condition_specifics?: Record<string, any>;
+  };
 }
 
 // Mock data generation removed - backend must provide real data
@@ -109,5 +121,8 @@ export function adaptOfferData(backendOffer: BackendOfferResponse): OfferDetails
     jakeScript: jake?.script || "Howdy, partner!",
     expiresAt: backendOffer.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     animationState: jake?.animationState || "default",
+    // Phase 4 Team 1: Enhanced metadata
+    serialNumber: backendOffer.serialNumber,
+    productMetadata: backendOffer.productMetadata,
   };
 }
