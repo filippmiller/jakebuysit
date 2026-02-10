@@ -19,6 +19,7 @@ import { uploadRoutes } from './api/routes/uploads.js';
 import { offerStreamRoutes } from './api/routes/offer-stream.js';
 import { integrationRoutes } from './api/routes/integrations.js';
 import { profitRoutes } from './api/routes/profits.js';
+import { loyaltyRoutes } from './api/routes/loyalty.js';
 import { logger } from './utils/logger.js';
 
 const fastify = Fastify({
@@ -94,6 +95,7 @@ fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 fastify.register(uploadRoutes, { prefix: '/api/v1/uploads' });
 fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
 fastify.register(profitRoutes, { prefix: '/api/v1/profits' });
+fastify.register(loyaltyRoutes, { prefix: '/api/v1/loyalty' });
 
 // Error handler
 fastify.setErrorHandler((error: any, request, reply) => {

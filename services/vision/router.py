@@ -50,22 +50,31 @@ async def identify_item(request: IdentifyRequest):
     - More angles = better condition assessment
     """
     try:
+        # Support both old and new field names
+        photo_urls = request.photo_urls if request.photo_urls else request.photos
+        base64_photos = request.base64_photos
+
+        total_photos = len(photo_urls) + len(base64_photos)
+
         logger.info(
             "identify_request_received",
-            photo_count=len(request.photos),
+            photo_count=total_photos,
+            url_count=len(photo_urls),
+            base64_count=len(base64_photos),
             has_description=bool(request.user_description)
         )
 
-        # Validate photo URLs
-        if not request.photos or len(request.photos) == 0:
+        # Validate at least one photo
+        if total_photos == 0:
             raise HTTPException(
                 status_code=400,
-                detail="At least one photo URL is required"
+                detail="At least one photo (URL or base64) is required"
             )
 
-        # Call vision identification
+        # Call vision identification with both URL and base64 photos
         result = await vision_identifier.identify_item(
-            photo_urls=request.photos,
+            photo_urls=photo_urls,
+            base64_photos=base64_photos,
             user_description=request.user_description
         )
 

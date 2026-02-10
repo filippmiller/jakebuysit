@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Compress an image file to target size
+ * Compress an image file to target size and return base64 data
  */
 export async function compressImage(
   file: File,
@@ -71,6 +71,43 @@ export async function compressImage(
     };
     reader.onerror = reject;
   });
+}
+
+/**
+ * Convert File to base64 string (with data URI prefix removed)
+ */
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data URI prefix (e.g., "data:image/jpeg;base64,")
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+}
+
+/**
+ * Convert File to base64 data URI (complete with prefix)
+ */
+export async function fileToDataURI(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+  });
+}
+
+/**
+ * Get media type from File
+ */
+export function getMediaType(file: File): string {
+  // Return media type from file.type, default to image/jpeg
+  return file.type || 'image/jpeg';
 }
 
 /**

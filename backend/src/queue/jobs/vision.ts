@@ -10,15 +10,18 @@ import { logger } from '../../utils/logger.js';
 interface VisionJobData {
   offerId: string;
   photoUrls: string[];
+  base64Photos?: Array<{ data: string; mediaType: string }>;
   userDescription?: string;
 }
 
 export async function processVisionJob(job: Job<VisionJobData>): Promise<void> {
-  const { offerId, photoUrls, userDescription } = job.data;
-  logger.info({ offerId, jobId: job.id, photoCount: photoUrls.length }, 'Vision job started');
+  const { offerId, photoUrls, base64Photos, userDescription } = job.data;
+  const totalPhotos = photoUrls.length + (base64Photos?.length || 0);
+  logger.info({ offerId, jobId: job.id, photoCount: totalPhotos }, 'Vision job started');
 
   try {
-    const result = await agent2.identify(photoUrls, userDescription);
+    // Pass both URL and base64 photos to agent2
+    const result = await agent2.identify(photoUrls, userDescription, base64Photos);
 
     logger.info({
       offerId,

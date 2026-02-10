@@ -30,6 +30,7 @@ class VisionIdentifier:
     async def identify_item(
         self,
         photo_urls: List[str],
+        base64_photos: Optional[List[Dict[str, str]]] = None,
         user_description: Optional[str] = None
     ) -> IdentifyResponse:
         """
@@ -37,6 +38,7 @@ class VisionIdentifier:
 
         Args:
             photo_urls: List of image URLs
+            base64_photos: List of base64-encoded photos with mediaType
             user_description: Optional user-provided text hint
 
         Returns:
@@ -45,13 +47,16 @@ class VisionIdentifier:
         Raises:
             Exception if confidence is too low or API fails
         """
-        logger.info("identifying_item", photo_count=len(photo_urls))
+        total_photos = len(photo_urls) + (len(base64_photos) if base64_photos else 0)
+        logger.info("identifying_item", photo_count=total_photos)
 
         # Build the prompt
         prompt = self._build_identification_prompt(user_description)
 
         # Prepare image content
         image_content = []
+
+        # Add URL photos
         for url in photo_urls[:6]:  # Limit to 6 photos as per spec
             image_content.append({
                 "type": "image",
@@ -60,6 +65,19 @@ class VisionIdentifier:
                     "url": url
                 }
             })
+
+        # Add base64 photos
+        if base64_photos:
+            remaining_slots = 6 - len(image_content)
+            for photo in base64_photos[:remaining_slots]:
+                image_content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": photo.get("mediaType", "image/jpeg"),
+                        "data": photo["data"]
+                    }
+                })
 
         # Add text prompt
         image_content.append({
@@ -111,8 +129,11 @@ class VisionIdentifier:
 
             # Extract serial number using OCR (async)
             try:
+                # Pass both URL and base64 photos to serial extractor
+                all_photo_urls = photo_urls.copy()
                 serial_result = await serial_extractor.extract_serial_number(
-                    photo_urls=photo_urls,
+                    photo_urls=all_photo_urls,
+                    base64_photos=base64_photos,
                     product_category=result.category,
                     brand=result.brand
                 )

@@ -20,12 +20,12 @@ export async function offerRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/v1/offers
-   * Create a new offer. Accepts photo URLs and optional description.
+   * Create a new offer. Accepts photos (base64 or URLs) and optional description.
    * Works for both authenticated and anonymous users.
    */
   fastify.post('/', { preHandler: optionalAuth }, async (request, reply) => {
     const userId = (request as any).userId || null;
-    const { photoUrls, userDescription } = validateBody(createOfferSchema, request.body);
+    const body = validateBody(createOfferSchema, request.body) as any;
 
     // Rate limit: max offers per hour (by user or by IP for anonymous)
     const rateKey = userId
@@ -37,7 +37,37 @@ export async function offerRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const { offerId } = await offerOrchestrator.createOffer(userId, photoUrls, userDescription);
+      // Handle both new format (photos array) and old format (photoUrls)
+      let photoUrls: string[];
+      let base64Photos: Array<{ data: string; mediaType: string }> = [];
+
+      if ('photos' in body) {
+        // New format: photos array with type field
+        photoUrls = [];
+        for (const photo of body.photos) {
+          if (photo.type === 'url') {
+            photoUrls.push(photo.data);
+          } else if (photo.type === 'base64') {
+            // Store base64 photos to pass to orchestrator
+            base64Photos.push({
+              data: photo.data,
+              mediaType: photo.mediaType || 'image/jpeg',
+            });
+          }
+        }
+      } else if ('photoUrls' in body) {
+        // Old format: backward compatibility
+        photoUrls = body.photoUrls;
+      } else {
+        return reply.status(400).send({ error: 'No photos provided' });
+      }
+
+      const { offerId } = await offerOrchestrator.createOffer(
+        userId,
+        photoUrls,
+        body.userDescription,
+        base64Photos.length > 0 ? base64Photos : undefined
+      );
 
       logger.info({ offerId, userId }, 'Offer creation initiated');
 

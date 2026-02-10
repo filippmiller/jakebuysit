@@ -5,9 +5,17 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 
+class Base64Photo(BaseModel):
+    """Base64-encoded photo data."""
+    data: str = Field(..., description="Base64-encoded image data (without data URI prefix)")
+    mediaType: str = Field(default="image/jpeg", description="Media type (e.g., image/jpeg, image/png)")
+
+
 class IdentifyRequest(BaseModel):
     """Request model for item identification."""
-    photos: List[str] = Field(..., description="Array of photo URLs")
+    photos: List[str] = Field(default_factory=list, description="Array of photo URLs (deprecated, use photo_urls)")
+    photo_urls: List[str] = Field(default_factory=list, description="Array of photo URLs")
+    base64_photos: List[Base64Photo] = Field(default_factory=list, description="Array of base64-encoded photos")
     user_description: Optional[str] = Field(None, description="Optional user text hint")
 
 

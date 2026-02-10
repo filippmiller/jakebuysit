@@ -21,32 +21,47 @@ const STAGE_CACHE_TTL = 600; // 10 minutes — transient processing data
 export const offerOrchestrator = {
   /**
    * Create a new offer and kick off the pipeline.
+   * Accepts either photo URLs or base64 photo data.
    */
   async createOffer(
     userId: string | null,
     photoUrls: string[],
     userDescription?: string,
+    base64Photos?: Array<{ data: string; mediaType: string }>,
   ): Promise<{ offerId: string }> {
+    // Combine URL and base64 photos for storage
+    const allPhotos = [
+      ...photoUrls.map((url) => ({ url, type: 'url', uploaded_at: new Date().toISOString() })),
+      ...(base64Photos || []).map((photo, index) => ({
+        type: 'base64',
+        data: photo.data,
+        mediaType: photo.mediaType,
+        uploaded_at: new Date().toISOString(),
+      })),
+    ];
+
     // Create offer record
     const offer = await db.create('offers', {
       user_id: userId,
       status: 'processing',
-      photos: JSON.stringify(photoUrls.map((url) => ({ url, uploaded_at: new Date().toISOString() }))),
+      photos: JSON.stringify(allPhotos),
       user_description: userDescription || null,
       offer_amount: 0, // placeholder until pricing completes
       expires_at: new Date(Date.now() + config.businessRules.offerExpiryHours * 3600_000).toISOString(),
     });
 
     const offerId = offer.id;
-    logger.info({ offerId, photoCount: photoUrls.length }, 'Offer created, starting pipeline');
+    logger.info({ offerId, photoCount: allPhotos.length }, 'Offer created, starting pipeline');
 
     // Set initial stage
     await this.setStage(offerId, 'uploaded');
 
     // Queue vision job — first stage of the pipeline
+    // Pass both URL and base64 photos to vision service
     await addJob('vision-identify', {
       offerId,
       photoUrls,
+      base64Photos: base64Photos || [],
       userDescription,
     }, {
       jobId: `vision-${offerId}`,

@@ -125,9 +125,14 @@ async function agent2Fetch<T>(path: string, body: Record<string, unknown>): Prom
 
 export const agent2 = {
   /** Identify an item from photos using Claude Vision */
-  async identify(photoUrls: string[], userDescription?: string): Promise<VisionResult> {
+  async identify(
+    photoUrls: string[],
+    userDescription?: string,
+    base64Photos?: Array<{ data: string; mediaType: string }>
+  ): Promise<VisionResult> {
     return agent2Fetch<VisionResult>('/api/v1/identify', {
       photo_urls: photoUrls,
+      base64_photos: base64Photos || [],
       user_description: userDescription,
     });
   },

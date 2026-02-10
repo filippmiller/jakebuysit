@@ -8,6 +8,7 @@ const { Pool } = pg;
 const ALLOWED_TABLES = new Set([
   'users', 'offers', 'shipments', 'verifications', 'payouts',
   'jake_bucks_transactions', 'fraud_checks', 'audit_log', 'config', 'price_history',
+  'loyalty_tier_transitions', 'loyalty_redemptions', 'loyalty_redemption_history',
 ]);
 
 function assertValidTable(table: string): void {

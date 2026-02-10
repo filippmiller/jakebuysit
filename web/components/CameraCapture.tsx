@@ -3,11 +3,17 @@
 import { useState, useEffect } from "react";
 import { Camera, Upload, X, Check } from "lucide-react";
 import { useCamera } from "@/hooks/useCamera";
-import { compressImage } from "@/lib/utils";
+import { compressImage, fileToBase64, getMediaType } from "@/lib/utils";
 import { jakeVoice } from "@/lib/jake-scripts";
 
+export interface PhotoData {
+  data: string; // base64 string (without data URI prefix)
+  mediaType: string; // e.g., "image/jpeg"
+  type: "base64";
+}
+
 interface CameraCaptureProps {
-  onPhotosCapture: (photos: File[]) => void;
+  onPhotosCapture: (photos: PhotoData[]) => void;
   maxPhotos?: number;
   className?: string;
 }
@@ -73,9 +79,27 @@ export function CameraCapture({
     setPreviews(newPreviews);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (photos.length > 0) {
-      onPhotosCapture(photos);
+      try {
+        // Convert all photos to base64 format
+        const photoDataList: PhotoData[] = await Promise.all(
+          photos.map(async (file) => {
+            const base64 = await fileToBase64(file);
+            const mediaType = getMediaType(file);
+            return {
+              data: base64,
+              mediaType,
+              type: "base64" as const,
+            };
+          })
+        );
+        onPhotosCapture(photoDataList);
+      } catch (error) {
+        console.error("Failed to convert photos to base64:", error);
+        // Fallback: still notify parent but with empty array
+        // This ensures UI doesn't hang
+      }
     }
   };
 

@@ -23,13 +23,35 @@ export const refreshSchema = z.object({
 
 // === Offers ===
 
+// Photo can be either a URL or base64 data
+const photoSchema = z.union([
+  z.object({
+    type: z.literal('url'),
+    data: z.string().url('Invalid photo URL'),
+  }),
+  z.object({
+    type: z.literal('base64'),
+    data: z.string().min(1, 'Base64 data required'),
+    mediaType: z.string().default('image/jpeg'), // e.g., "image/jpeg", "image/png"
+  }),
+]);
+
 export const createOfferSchema = z.object({
-  photoUrls: z
-    .array(z.string().url('Invalid photo URL'))
-    .min(1, 'At least one photo URL required')
+  photos: z
+    .array(photoSchema)
+    .min(1, 'At least one photo required')
     .max(6, 'Maximum 6 photos allowed'),
   userDescription: z.string().max(1000).optional(),
-});
+}).or(
+  // Backward compatibility: accept old format with photoUrls
+  z.object({
+    photoUrls: z
+      .array(z.string().url('Invalid photo URL'))
+      .min(1, 'At least one photo URL required')
+      .max(6, 'Maximum 6 photos allowed'),
+    userDescription: z.string().max(1000).optional(),
+  })
+);
 
 export const declineOfferSchema = z.object({
   reason: z.string().max(500).optional(),
