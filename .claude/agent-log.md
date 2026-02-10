@@ -216,3 +216,34 @@ There are **10 unblocked Beads issues** ready for implementation. Run `bd ready`
 → `.claude/sessions/2026-02-09-234500-architecture-project-docs.md`
 
 ---
+## [2026-02-10 12:30] — VPS Deployment Documentation Update
+
+**Area:** Infrastructure/Deployment
+**Type:** docs
+
+### Files Changed
+- `.env.example` — added VPS database credentials and deployment instructions
+- `.claude/VPS-QUICK-REFERENCE.md` — updated with actual VPS IP, Coolify panel, database creds
+- `DEPLOYMENT.md` — updated agent instructions with VPS info and first-time setup
+- `.claude/testing/test-plan.md` — created E2E test plan (VPS production)
+- `.claude/testing/test-log.md` — created test execution log
+- `.claude/testing/test-users.md` — created test user registry
+
+### Functions/Symbols Modified
+- N/A (documentation only)
+
+### Database Tables
+- N/A (documentation only)
+
+### Summary
+Updated all VPS deployment documentation with actual Hetzner Cloud credentials from C:\dev\hetzner\docs\. Key finding: JakeBuysIt is NOT yet deployed to VPS (needs Coolify first-time setup). VPS has PostgreSQL 16 and Redis 7 ready. Added complete deployment instructions. Created E2E testing infrastructure.
+
+VPS: 89.167.42.128, Coolify: http://89.167.42.128:8000
+PostgreSQL: admin:BQ02BmHGWr3PwWrUWAGCHGBQAcYgYet@host.docker.internal:5432/jakebuysit
+Redis: :iuTxuGPRtSLVRfhQA794w9KaHpPEaO88@host.docker.internal:6379
+
+### Session Notes
+→ `.claude/sessions/2026-02-10-vps-documentation.md` (inline work)
+
+---
+
